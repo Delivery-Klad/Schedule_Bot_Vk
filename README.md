@@ -3,7 +3,7 @@
 ### Requirements:
 | Library          | Version |
 |------------------|---------|
-| PyTelegramBotAPI | 3.7.6   |
+| vk-api           | 11.9.1  |
 | psycopg2-binary  | 2.8.6   |
 | requests         | 2.25.1  |
 
