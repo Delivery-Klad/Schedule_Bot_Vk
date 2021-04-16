@@ -172,7 +172,7 @@ def get_time_ico(time):
 def db_connect():  # функция подключения к первой базе данных
     try:
         con = psycopg2.connect(
-            host="ec2-34-252-251-16.eu-west-1.compute.amazonaws.com",
+            host="ec2-54-217-195-234.eu-west-1.compute.amazonaws.com",
             database=str(os.environ.get('DB')),
             user=str(os.environ.get('DB_user')),
             port="5432",
