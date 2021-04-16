@@ -293,6 +293,7 @@ def get_group(user_id):
 def message_handler(user_id, message):
     if user_id in group_list:
         set_group(user_id, message.upper())
+        return
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
