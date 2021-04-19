@@ -121,6 +121,22 @@ def log(message, user_id):
         error_log(er)
 
 
+def errors(user_id):
+    global keyboard
+    if user_id in admins_list:
+        # api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard)
+        pass
+    else:
+        send_message(user_id, f"{sm}Я вас не понял")
+
+
+def users(user_id):
+    if user_id in admins_list:
+        pass
+    else:
+        send_message(user_id, f"{sm}Я вас не понял")
+
+
 def get_week(user_id):
     try:
         week = int((datetime.now() + timedelta(hours=time_difference)).strftime("%V"))
@@ -128,7 +144,7 @@ def get_week(user_id):
             week -= 5
         else:
             week -= 38
-        send_message(user_id, f"{week}< неделя")
+        send_message(user_id, f"{week} неделя")
     except Exception as er:
         error_log(er)
 
