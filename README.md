@@ -15,5 +15,6 @@
 | DB            | Database name           |
 | DB_user       | Database user           |
 | DB_pass       | Database user password  |
+| DB_host       | Database host           |
 
 <img  width=100% src="images/500.jpg">
