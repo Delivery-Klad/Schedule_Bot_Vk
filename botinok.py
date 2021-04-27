@@ -256,7 +256,7 @@ def start(user_id):
                f"/group - установить/изменить группу\n" \
                f"/today - расписание на сегодня\n" \
                f"/tomorrow - расписание на завтра\n" \
-               f"/week - расписание на неделю" \
+               f"/week - расписание на неделю\n" \
                f"/next_week - расписание на некст неделю"
         send_message(user_id, text)
     except Exception as er:
@@ -347,14 +347,14 @@ def message_handler(user_id, message):
                     send_message(user_id, f"{sm}{text}")
                 else:
                     error_log(er)
-    elif "на неделю" in message or "week" in message:
-        group = get_group(user_id)
-        if group:
-            get_week_schedule(user_id, "week", group)
     elif "на следующую неделю" in message or "next_week" in message:
         group = get_group(user_id)
         if group:
             get_week_schedule(user_id, "next_week", group)
+    elif "на неделю" in message or "week" in message:
+        group = get_group(user_id)
+        if group:
+            get_week_schedule(user_id, "week", group)
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
