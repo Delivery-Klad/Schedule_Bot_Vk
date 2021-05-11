@@ -361,7 +361,14 @@ def message_handler(user_id, message):
     elif "на неделю" in message or "week" in message:
         group = get_group(user_id)
         if group:
-            get_week_schedule(user_id, "week", group)
+            try:
+                get_week_schedule(user_id, "week", group)
+            except Exception as er:
+                if "line 1 column 1" in str(er):
+                    text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
+                    send_message(user_id, f"{sm}{text}")
+                else:
+                    error_log(er)
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
