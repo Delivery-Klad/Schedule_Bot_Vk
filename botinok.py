@@ -78,6 +78,12 @@ def error_log(er):
         reason = f"EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {exc_obj}"
         connect, cursor = db_connect()
         temp_date = correctTimeZone()
+        time = datetime.now() + timedelta(hours=time_difference)
+        if "line 1 column 1" in str(er):
+            global response
+            reason = f"{time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {str(response)}"
+        else:
+            reason = f"{time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {exc_obj}"
         cursor.execute(f"INSERT INTO Errors VALUES($taG${reason}$taG$)")
         connect.commit()
         cursor.close()
@@ -330,8 +336,7 @@ def message_handler(user_id, message):
                 if "line 1 column 1" in str(er):
                     text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
-                else:
-                    error_log(er)
+                error_log(er)
     elif "завтра" in message or "tomorrow" in message:
         group = get_group(user_id)
         if group:
@@ -345,8 +350,7 @@ def message_handler(user_id, message):
                 if "line 1 column 1" in str(er):
                     text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
-                else:
-                    error_log(er)
+                error_log(er)
     elif "на следующую неделю" in message or "next_week" in message:
         group = get_group(user_id)
         if group:
@@ -356,8 +360,7 @@ def message_handler(user_id, message):
                 if "line 1 column 1" in str(er):
                     text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
-                else:
-                    error_log(er)
+                error_log(er)
     elif "на неделю" in message or "week" in message:
         group = get_group(user_id)
         if group:
@@ -367,8 +370,7 @@ def message_handler(user_id, message):
                 if "line 1 column 1" in str(er):
                     text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
-                else:
-                    error_log(er)
+                error_log(er)
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
