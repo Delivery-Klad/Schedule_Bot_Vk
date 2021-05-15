@@ -8,6 +8,7 @@ import linecache
 import sys
 import os
 from datetime import datetime, timedelta
+import ujson
 
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
 api = vk_session.get_api()
@@ -128,7 +129,7 @@ def log(message, user_id):
         error_log(er)
 
 
-def errors(user_id):
+def errors(user_id, message):
     global keyboard
     if user_id in admins_list:
         sql_request = "COPY (SELECT * FROM errors) TO STDOUT WITH CSV HEADER"
@@ -136,10 +137,21 @@ def errors(user_id):
             connect, cursor = db_connect()
             with open("temp/errors.csv", "w") as output_file:
                 cursor.copy_expert(sql_request, output_file)
-            doc = upload.document_message("temp/errors.csv", peer_id=user_id)[0]
-            attachment = f"doc{doc['owner_id']}_{doc['id']}"
-            api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
-                              attachment=attachment)
+            # doc = upload.document_message("temp/errors.csv", peer_id=user_id)[0]
+            # attachment = f"doc{doc['owner_id']}_{doc['id']}"
+
+            openedfile = open('temp/errors.csv', 'rb')
+            files = {'file': openedfile}
+            fileonserver = ujson.loads(
+                requests.post(api.docs.getUploadServer(type='audio_message')['upload_url'],
+                              files=files).text)
+            attachment = api.docs.save(file=fileonserver['file'],
+                                       title=getattr(message, 'document').file_name,
+                                       tags='')
+
+            api.messages.send(user_id=user_id, message="Лог ошибок", keyboard=keyboard,
+                              attachment='doc{}_{}'.format(attachment[0]['owner_id'],
+                                                           attachment[0]['did']))
             os.remove("temp/errors.csv")
             cursor.execute("DELETE FROM errors")
             connect.commit()
@@ -411,7 +423,7 @@ def message_handler(user_id, message):
                     send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "errors" in message:
-        errors(user_id)
+        errors(user_id, message)
     elif "users" in message:
         users(user_id)
     else:
