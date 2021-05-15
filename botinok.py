@@ -141,7 +141,7 @@ def errors(user_id, message):
             doc = doc['doc']
             attachment = f"doc{doc['owner_id']}_{doc['id']}"
 
-            api.messages.send(user_id=user_id, message="Лог ошибок", keyboard=keyboard,
+            api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
                               attachment=attachment)
             os.remove("temp/errors.csv")
             cursor.execute("DELETE FROM errors")
