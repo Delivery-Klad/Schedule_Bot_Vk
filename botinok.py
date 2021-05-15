@@ -137,12 +137,13 @@ def errors(user_id):
             connect, cursor = db_connect()
             with open("temp/errors.csv", "w") as output_file:
                 cursor.copy_expert(sql_request, output_file)
-            with open("temp/errors.csv", "rb") as doc:
-                doc = upload.document_message("temp/errors.csv", peer_id=user_id)[0]
-                attachments = list()
-                attachments.append('doc{}_{}'.format(doc['owner_id'], doc['id']))
-                api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
-                                  attachment=','.join(attachments))
+            with open("temp/errors.csv", "r") as output_file:
+                print(output_file.read())
+            doc = upload.document_message("temp/errors.csv", peer_id=user_id)[0]
+            attachments = list()
+            attachments.append('doc{}_{}'.format(doc['owner_id'], doc['id']))
+            api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
+                              attachment=','.join(attachments))
             os.remove("temp/errors.csv")
             cursor.execute("DELETE FROM errors")
             connect.commit()
