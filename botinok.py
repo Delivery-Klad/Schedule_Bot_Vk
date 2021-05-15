@@ -16,7 +16,7 @@ longpoll = VkLongPoll(vk_session)
 sm = "🤖"
 keyboard = None
 group_list = []
-admins_list = [496537969]
+admins_list = [492191518, 96641952]
 commands = ["сегодня", "завтра", "на неделю"]
 day_dict = {"monday": "Понедельник",
             "tuesday": "Вторник",
@@ -158,8 +158,29 @@ def errors(user_id):
 
 
 def users(user_id):
+    global keyboard
     if user_id in admins_list:
-        pass
+        sql_request = "COPY (SELECT * FROM users) TO STDOUT WITH CSV HEADER"
+        if user_id in admins_list:
+            connect, cursor = db_connect()
+            with open("temp/users.csv", "w") as output_file:
+                cursor.copy_expert(sql_request, output_file)
+            with open("temp/users.csv", "rb") as doc:
+                doc = upload.document_message("temp/users.csv", peer_id=user_id)[0]
+                attachments = list()
+                attachments.append('doc{}_{}'.format(doc['owner_id'], doc['id']))
+                api.messages.send(user_id=user_id, message="Лог ошибок", keyboard=keyboard,
+                                  attachment=','.join(attachments))
+            os.remove("temp/users.csv")
+            cursor.execute("DELETE FROM errors")
+            connect.commit()
+            isolation_level = connect.isolation_level
+            connect.set_isolation_level(0)
+            cursor.execute("VACUUM FULL")
+            connect.set_isolation_level(isolation_level)
+            connect.commit()
+            cursor.close()
+            connect.close()
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
