@@ -137,7 +137,7 @@ def errors(user_id, message):
             connect, cursor = db_connect()
             with open("temp/errors.csv", "w") as output_file:
                 cursor.copy_expert(sql_request, output_file)
-            doc = upload.document_message("temp/errors.csv", peer_id=user_id)
+            doc = upload.document_message("temp/errors.csv", title='errors', peer_id=user_id)
             doc = doc['doc']
             attachment = f"doc{doc['owner_id']}_{doc['id']}"
 
@@ -165,12 +165,12 @@ def users(user_id):
             connect, cursor = db_connect()
             with open("temp/users.csv", "w") as output_file:
                 cursor.copy_expert(sql_request, output_file)
-            with open("temp/users.csv", "rb") as doc:
-                doc = upload.document_message("temp/users.csv", peer_id=user_id)[0]
-                attachments = list()
-                attachments.append('doc{}_{}'.format(doc['owner_id'], doc['id']))
-                api.messages.send(user_id=user_id, message="Лог ошибок", keyboard=keyboard,
-                                  attachment=','.join(attachments))
+            doc = upload.document_message("temp/users.csv", title='users', peer_id=user_id)
+            doc = doc['doc']
+            attachment = f"doc{doc['owner_id']}_{doc['id']}"
+
+            api.messages.send(user_id=user_id, random_id=0, message="Пользователи", keyboard=keyboard,
+                              attachment=attachment)
             os.remove("temp/users.csv")
             cursor.execute("DELETE FROM errors")
             connect.commit()
