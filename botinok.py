@@ -137,21 +137,12 @@ def errors(user_id, message):
             connect, cursor = db_connect()
             with open("temp/errors.csv", "w") as output_file:
                 cursor.copy_expert(sql_request, output_file)
-            # doc = upload.document_message("temp/errors.csv", peer_id=user_id)[0]
-            # attachment = f"doc{doc['owner_id']}_{doc['id']}"
-
-            openedfile = open('temp/errors.csv', 'rb')
-            files = {'file': openedfile}
-            fileonserver = ujson.loads(
-                requests.post(api.docs.getUploadServer(type='audio_message')['upload_url'],
-                              files=files).text)
-            attachment = api.docs.save(file=fileonserver['file'],
-                                       title=getattr(message, 'document').file_name,
-                                       tags='')
+            doc = upload.document_message("temp/errors.csv", peer_id=user_id)
+            doc = doc['doc']
+            attachment = f"doc{doc['owner_id']}_{doc['id']}"
 
             api.messages.send(user_id=user_id, message="Лог ошибок", keyboard=keyboard,
-                              attachment='doc{}_{}'.format(attachment[0]['owner_id'],
-                                                           attachment[0]['did']))
+                              attachment=attachment)
             os.remove("temp/errors.csv")
             cursor.execute("DELETE FROM errors")
             connect.commit()
