@@ -1,4 +1,5 @@
 import vk_api
+from vk_api import VkUpload
 from vk_api.longpoll import VkLongPoll, VkEventType
 import requests
 import psycopg2
@@ -10,6 +11,7 @@ from datetime import datetime, timedelta
 
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
 api = vk_session.get_api()
+upload = VkUpload(vk_session)
 longpoll = VkLongPoll(vk_session)
 sm = "🤖"
 keyboard = None
@@ -130,8 +132,27 @@ def log(message, user_id):
 def errors(user_id):
     global keyboard
     if user_id in admins_list:
-        # api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard)
-        pass
+        sql_request = "COPY (SELECT * FROM errors) TO STDOUT WITH CSV HEADER"
+        if user_id in admins_list:
+            connect, cursor = db_connect()
+            with open("temp/errors.csv", "w") as output_file:
+                cursor.copy_expert(sql_request, output_file)
+            with open("temp/errors.csv", "rb") as doc:
+                doc = upload.document_message("temp/errors.csv", peer_id=user_id)[0]
+                attachments = list()
+                attachments.append('doc{}_{}'.format(doc['owner_id'], doc['id']))
+                api.messages.send(user_id=user_id, message="Лог ошибок", keyboard=keyboard,
+                                  attachment=','.join(attachments))
+            os.remove("temp/errors.csv")
+            cursor.execute("DELETE FROM errors")
+            connect.commit()
+            isolation_level = connect.isolation_level
+            connect.set_isolation_level(0)
+            cursor.execute("VACUUM FULL")
+            connect.set_isolation_level(isolation_level)
+            connect.commit()
+            cursor.close()
+            connect.close()
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
@@ -214,8 +235,8 @@ def get_schedule(day, group, title):
         j, o = i['lesson'], i['time']
         try:
             schedule += f"{number_of_lesson(o['start'])} ({j['classRoom']}" \
-                   f"{get_time_ico(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
-                   f"({j['type']})\n{get_teacher_ico(j['teacher'])} {j['teacher']}\n\n"
+                        f"{get_time_ico(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
+                        f"({j['type']})\n{get_teacher_ico(j['teacher'])} {j['teacher']}\n\n"
         except TypeError:
             pass
         except Exception as er:
@@ -371,6 +392,10 @@ def message_handler(user_id, message):
                     text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
                 error_log(er)
+    elif "errors" in message:
+        errors(user_id)
+    elif "users" in message:
+        users(user_id)
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
@@ -384,7 +409,6 @@ keyboard = {
 }
 keyboard = json.dumps(keyboard, ensure_ascii=False).encode('utf-8')
 keyboard = str(keyboard.decode('utf-8'))
-
 
 for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW:
