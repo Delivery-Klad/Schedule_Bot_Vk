@@ -106,7 +106,7 @@ def set_group(user_id, group):
                 f"INSERT INTO users VALUES('None', $taG${user_info['first_name']}$taG$,"
                 f"$taG${user_info['last_name']}$taG$, $taG${group}$taG$, {user_id})")
         else:
-            cursor.execute(f"UPDATE users SET grp=$taG${group}$taG$ first_name=$taG${user_info['first_name']}$taG$"
+            cursor.execute(f"UPDATE users SET grp=$taG${group}$taG$, first_name=$taG${user_info['first_name']}$taG$,"
                            f" last_name=$taG${user_info['last_name']}$taG$ WHERE ids={user_id}")
         connect.commit()
         cursor.close()
