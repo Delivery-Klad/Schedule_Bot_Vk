@@ -239,7 +239,7 @@ def db_connect():  # функция подключения к первой ба�
             host="ec2-54-217-195-234.eu-west-1.compute.amazonaws.com",
             database=str(os.environ.get('DB')),
             user=str(os.environ.get('DB_user')),
-            port=str(os.environ.get('DB_port')),
+            port="5432",
             password=str(os.environ.get('DB_pass'))
         )
         cur = con.cursor()
@@ -438,6 +438,10 @@ for event in longpoll.listen():
                 msg = event.text.lower()
                 user = event.user_id
                 log(msg, user)
+                try:
+                    print(api.users.get(user))
+                except Exception as er:
+                    print(er)
                 message_handler(user, msg)
                 # (user, "kk")
             except Exception as e:
