@@ -439,7 +439,8 @@ for event in longpoll.listen():
                 user = event.user_id
                 log(msg, user)
                 try:
-                    print(api.users.get(user))
+                    print(str(vk_api.vk_api.VkApi.method(vk_session, 'users.get', {'user_ids': user})[0]))
+                    # print(api.users.get(user))
                 except Exception as er:
                     print(er)
                 message_handler(user, msg)
