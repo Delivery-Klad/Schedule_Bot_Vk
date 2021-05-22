@@ -100,12 +100,14 @@ def set_group(user_id, group):
         connect, cursor = db_connect()
         cursor.execute(f"SELECT count(ids) FROM users WHERE ids={user_id}")
         res = cursor.fetchall()[0][0]
+        user_info = vk_api.vk_api.VkApi.method(vk_session, 'users.get', {'user_ids': user})[0]
         if res == 0:
             cursor.execute(
-                f"INSERT INTO users VALUES('None', 'None', 'None', "
-                f"$taG${group}$taG$, {user_id})")
+                f"INSERT INTO users VALUES('None', $taG${user_info['first_name']}$taG$,"
+                f"$taG${user_info['last_name']}$taG$, $taG${group}$taG$, {user_id})")
         else:
-            cursor.execute(f"UPDATE users SET grp=$taG${group}$taG$ WHERE ids={user_id}")
+            cursor.execute(f"UPDATE users SET grp=$taG${group}$taG$ first_name=$taG${user_info['first_name']}$taG$"
+                           f" last_name=$taG${user_info['last_name']}$taG$ WHERE ids={user_id}")
         connect.commit()
         cursor.close()
         connect.close()
@@ -438,12 +440,6 @@ for event in longpoll.listen():
                 msg = event.text.lower()
                 user = event.user_id
                 log(msg, user)
-                try:
-                    print(str(vk_api.vk_api.VkApi.method(vk_session, 'users.get', {'user_ids': user})[0]))
-                    # print(api.users.get(user))
-                except Exception as er:
-                    print(er)
                 message_handler(user, msg)
-                # (user, "kk")
             except Exception as e:
                 print(e)
