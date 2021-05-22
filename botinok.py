@@ -239,7 +239,7 @@ def db_connect():  # функция подключения к первой ба�
             host="ec2-54-217-195-234.eu-west-1.compute.amazonaws.com",
             database=str(os.environ.get('DB')),
             user=str(os.environ.get('DB_user')),
-            port="5432",
+            port=str(os.environ.get('DB_port')),
             password=str(os.environ.get('DB_pass'))
         )
         cur = con.cursor()
