@@ -310,7 +310,7 @@ def set_group(user_id, group):
     try:
         connect, cursor = db_connect()
         valid_group = group.split("-")
-        if len(valid_group < 3):
+        if len(valid_group) < 3:
             send_message(user_id, f"{sm}Неверный формат группы")
             return
         print(valid_group[1].isnumeric())
