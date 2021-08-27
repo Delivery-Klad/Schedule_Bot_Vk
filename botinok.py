@@ -1,5 +1,5 @@
 import time
-import schedule
+# import schedule
 import vk_api
 from vk_api import VkUpload
 from vk_api.longpoll import VkLongPoll, VkEventType
