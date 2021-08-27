@@ -309,6 +309,14 @@ def get_time_icon(local_time):
 def set_group(user_id, group):
     try:
         connect, cursor = db_connect()
+        valid_group = group.split("-")
+        if len(valid_group < 3):
+            send_message(user_id, f"{sm}Неверный формат группы")
+            return
+        print(valid_group[1].isnumeric())
+        print(valid_group[2].isnumeric())
+        print(valid_group)
+        print(len(valid_group))
         cursor.execute(f"SELECT count(ids) FROM users WHERE ids={user_id}")
         res = cursor.fetchall()[0][0]
         user_info = vk_api.vk_api.VkApi.method(vk_session, 'users.get', {'user_ids': user})[0]
