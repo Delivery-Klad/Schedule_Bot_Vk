@@ -356,10 +356,10 @@ def set_group(user_id, group):
 def get_week(user_id):
     try:
         week = int((datetime.now() + timedelta(hours=time_difference)).strftime("%V"))
-        if week < 39:
+        if week < 35:
             week -= 5
         else:
-            week -= 38
+            week -= 34
         send_message(user_id, f"{week} неделя")
     except Exception as er:
         error_log(er)
