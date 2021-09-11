@@ -65,12 +65,12 @@ def find_match(word: str):
     result = ""
     for element in commands:
         matcher = difflib.SequenceMatcher(None, word.lower(), element)
-        print(matcher.ratio())
         if matcher.ratio() > best_match:
             best_match = matcher.ratio()
             result = element
     if best_match < 49:
         return word
+    print(result)
     return result
 
 
@@ -478,6 +478,7 @@ def message_handler(user_id, message):
         set_group(user_id, message.upper())
         return
     message = find_match(message)
+    print(message)
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
