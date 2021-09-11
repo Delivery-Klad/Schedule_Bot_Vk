@@ -70,7 +70,7 @@ def find_match(word: str):
             result = element
     if best_match < 49:
         return word
-    print(result)
+    print(f"matcher {result}")
     return result
 
 
@@ -478,7 +478,7 @@ def message_handler(user_id, message):
         set_group(user_id, message.upper())
         return
     message = find_match(message)
-    print(message)
+    print(f"msg: {message}")
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
