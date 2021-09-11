@@ -7,6 +7,7 @@ import requests
 import psycopg2
 import json
 import linecache
+import difflib
 import sys
 import os
 from datetime import datetime, timedelta
@@ -42,7 +43,7 @@ sm = "🤖"
 keyboard = None
 group_list = []
 admins_list = [492191518, 96641952]
-commands = ["сегодня", "завтра", "на неделю"]
+commands = ["сегодня", "завтра", "на неделю", "неделя", "на следующую неделю"]
 day_dict = {"monday": "Понедельник",
             "tuesday": "Вторник",
             "wednesday": "Среда",
@@ -56,6 +57,21 @@ delimiter = "------------------------------------------------"
 time_difference = 3
 response = ""
 print("Loading...")
+
+
+def find_match(word: str):
+    global commands
+    best_match = 0.0
+    result = ""
+    for element in commands:
+        matcher = difflib.SequenceMatcher(None, word.lower(), element)
+        print(matcher.ratio())
+        if matcher.ratio() > best_match:
+            best_match = matcher.ratio()
+            result = element
+    if best_match < 49:
+        return word
+    return result
 
 
 def button(text, color):
@@ -160,56 +176,54 @@ def correctTimeZone():
 
 def users(user_id):
     global keyboard
-    if user_id in admins_list:
+    if isAdmin(user_id):
         sql_request = "COPY (SELECT * FROM users) TO STDOUT WITH CSV HEADER"
-        if user_id in admins_list:
-            connect, cursor = db_connect()
-            with open("temp/users.csv", "w") as output_file:
-                cursor.copy_expert(sql_request, output_file)
-            doc = upload.document_message("temp/users.csv", title='users', peer_id=user_id)
-            doc = doc['doc']
-            attachment = f"doc{doc['owner_id']}_{doc['id']}"
+        connect, cursor = db_connect()
+        with open("temp/users.csv", "w") as output_file:
+            cursor.copy_expert(sql_request, output_file)
+        doc = upload.document_message("temp/users.csv", title='users', peer_id=user_id)
+        doc = doc['doc']
+        attachment = f"doc{doc['owner_id']}_{doc['id']}"
 
-            api.messages.send(user_id=user_id, random_id=0, message="Пользователи", keyboard=keyboard,
-                              attachment=attachment)
-            os.remove("temp/users.csv")
-            cursor.execute("DELETE FROM errors")
-            connect.commit()
-            isolation_level = connect.isolation_level
-            connect.set_isolation_level(0)
-            cursor.execute("VACUUM FULL")
-            connect.set_isolation_level(isolation_level)
-            connect.commit()
-            cursor.close()
-            connect.close()
+        api.messages.send(user_id=user_id, random_id=0, message="Пользователи", keyboard=keyboard,
+                          attachment=attachment)
+        os.remove("temp/users.csv")
+        cursor.execute("DELETE FROM errors")
+        connect.commit()
+        isolation_level = connect.isolation_level
+        connect.set_isolation_level(0)
+        cursor.execute("VACUUM FULL")
+        connect.set_isolation_level(isolation_level)
+        connect.commit()
+        cursor.close()
+        connect.close()
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
 
 def errors(user_id, message):
     global keyboard
-    if user_id in admins_list:
+    if isAdmin(user_id):
         sql_request = "COPY (SELECT * FROM errors) TO STDOUT WITH CSV HEADER"
-        if user_id in admins_list:
-            connect, cursor = db_connect()
-            with open("temp/errors.csv", "w") as output_file:
-                cursor.copy_expert(sql_request, output_file)
-            doc = upload.document_message("temp/errors.csv", title='errors', peer_id=user_id)
-            doc = doc['doc']
-            attachment = f"doc{doc['owner_id']}_{doc['id']}"
+        connect, cursor = db_connect()
+        with open("temp/errors.csv", "w") as output_file:
+            cursor.copy_expert(sql_request, output_file)
+        doc = upload.document_message("temp/errors.csv", title='errors', peer_id=user_id)
+        doc = doc['doc']
+        attachment = f"doc{doc['owner_id']}_{doc['id']}"
 
-            api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
-                              attachment=attachment)
-            os.remove("temp/errors.csv")
-            cursor.execute("DELETE FROM errors")
-            connect.commit()
-            isolation_level = connect.isolation_level
-            connect.set_isolation_level(0)
-            cursor.execute("VACUUM FULL")
-            connect.set_isolation_level(isolation_level)
-            connect.commit()
-            cursor.close()
-            connect.close()
+        api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
+                          attachment=attachment)
+        os.remove("temp/errors.csv")
+        cursor.execute("DELETE FROM errors")
+        connect.commit()
+        isolation_level = connect.isolation_level
+        connect.set_isolation_level(0)
+        cursor.execute("VACUUM FULL")
+        connect.set_isolation_level(isolation_level)
+        connect.commit()
+        cursor.close()
+        connect.close()
     else:
         send_message(user_id, f"{sm}Я вас не понял")
 
@@ -463,6 +477,7 @@ def message_handler(user_id, message):
     if user_id in group_list:
         set_group(user_id, message.upper())
         return
+    message = find_match(message)
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
@@ -526,7 +541,7 @@ def message_handler(user_id, message):
         group = get_group(user_id)
         if group:
             try:
-                week = int(message.text.split()[1])
+                week = int(message.split()[1])
                 get_week_schedule(user_id, f"{week}/week_num", group)
             except Exception as er:
                 if "line 1 column 1" in str(er):
