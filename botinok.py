@@ -16,7 +16,6 @@ from methods.connect import db_connect, create_tables
 check_env.validator()
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
 api = vk_session.get_api()
-upload = VkUpload(vk_session)
 longpoll = VkLongPoll(vk_session)
 sm = "🤖"
 group_list = []
@@ -42,10 +41,7 @@ def users(user_id):
         connect, cursor = db_connect()
         with open("temp/users.csv", "w") as output_file:
             cursor.copy_expert(sql_request, output_file)
-        doc = upload.document_message("temp/users.csv", title='users', peer_id=user_id)
-        doc = doc['doc']
-        attachment = f"doc{doc['owner_id']}_{doc['id']}"
-        sender.send_message(user_id, "Пользователи", attachment)
+        sender.send_doc(user_id, "Пользователи", "temp/users.csv")
         os.remove("temp/users.csv")
         cursor.execute("DELETE FROM errors")
         connect.commit()
@@ -66,10 +62,7 @@ def errors(user_id, message):
         connect, cursor = db_connect()
         with open("temp/errors.csv", "w") as output_file:
             cursor.copy_expert(sql_request, output_file)
-        doc = upload.document_message("temp/errors.csv", title='errors', peer_id=user_id)
-        doc = doc['doc']
-        attachment = f"doc{doc['owner_id']}_{doc['id']}"
-        sender.send_message(user_id, "Лог ошибок", attachment)
+        sender.send_doc(user_id, "Лог ошибок", "temp/errors.csv")
         os.remove("temp/errors.csv")
         cursor.execute("DELETE FROM errors")
         connect.commit()
@@ -131,10 +124,7 @@ def cache():
                 time.sleep(0.1)
         sender.send_message(variables.admins_list[0], f"Caching success! \n{failed}/{len(local_groups)} failed")
         try:
-            doc = upload.document_message("cache/ИКБО-08-18.json", title='cache', peer_id=variables.admins_list[0])
-            doc = doc['doc']
-            attachment = f"doc{doc['owner_id']}_{doc['id']}"
-            sender.send_message(variables.admins_list[0], "Cache", attachment)
+            sender.send_doc(variables.admins_list[0], "Cache", "cache/ИКБО-08-18.json")
         except Exception as er:
             error_log(er)
     except Exception as er:
@@ -379,9 +369,7 @@ def message_handler(user_id, message):
             return
         if pic is not None:
             try:
-                photo = upload.photo_messages(f"maps/{pic}.png", peer_id=variables.admins_list[0])
-                attachment = f"photo{photo[0]['owner_id']}_{photo[0]['id']}"
-                sender.send_message(user_id, text, attachment)
+                sender.send_photo(user_id, text, f"maps/{pic}.png")
                 return
             except FileNotFoundError:
                 sender.send_message(user_id, f"{sm}Аудитория не найдена на схемах")

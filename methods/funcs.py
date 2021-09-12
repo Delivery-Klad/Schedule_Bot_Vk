@@ -1,6 +1,5 @@
 from methods.logger import error_log
-from datetime import datetime, timedelta
-from methods.variables import admins_list, time_difference, lesson_dict, time_dict
+from methods.variables import admins_list, lesson_dict, time_dict
 
 
 def isAdmin(user_id):
