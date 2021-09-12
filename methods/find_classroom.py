@@ -41,57 +41,60 @@ def make_header(name: str, number: int):
 
 
 def find_classroom(classroom: str):
-    classroom = classroom.replace("-", " ")
-    temp = classroom.split(" ")
-    if len(temp) > 1:
-        if temp[0].lower() in variables.parts:
-            name, number = temp[0].lower(), int(temp[1])
+    try:
+        classroom = classroom.replace("-", " ")
+        temp = classroom.split(" ")
+        if len(temp) > 1:
+            if temp[0].lower() in variables.parts:
+                name, number = temp[0].lower(), int(temp[1])
+            else:
+                return None, None
         else:
-            return None, None
-    else:
-        if not temp[0][0].isnumeric() and temp[0][1:].isnumeric():
-            name, number = temp[0][0].lower(), int(temp[0][1:])
-        else:
-            return None, None
-    if name == "ивц":
-        filename = "ivc.png"
-    elif name == "а":
-        if number < 5 or 202 < number < 214:
-            filename = "a_2_r"
-        elif 4 < number < 9 or 213 < number < 236:
-            filename = "a_2_l"
-        elif number in [137, 135, 131, 129, 172, 171, 170, 168, 166, 164, 162, 160, 158, 156]:
-            filename = "a_1_m"
-        elif 99 < number < 139:
-            filename = "a_1_r"
-        elif 172 < number < 200:
-            filename = "a_1_l"
-        elif 312 < number < 319 or 8 < number < 14:
-            filename = "a_3_r"
-        elif 318 < number < 325 or 13 < number < 19:
-            filename = "a_3_l"
-        elif 299 < number < 313:
-            filename = "a_3_r_r"
-        elif 224 < number < 337:
-            filename = "a_3_l_l"
-        elif 400 < number < 413:
-            filename = "a_4_r"
-        elif number in [416, 417, 418, 419, 420, 421, 422, 423, 424, 439]:
-            filename = "a_4_m"
-        elif number in [425, 426, 427, 428, 429, 430, 433, 434, 436, 438]:
-            filename = "a_4_l"
+            if not temp[0][0].isnumeric() and temp[0][1:].isnumeric():
+                name, number = temp[0][0].lower(), int(temp[0][1:])
+            else:
+                return None, None
+        if name == "ивц":
+            filename = "ivc.png"
+        elif name == "а":
+            if number < 5 or 202 < number < 214:
+                filename = "a_2_r"
+            elif 4 < number < 9 or 213 < number < 236:
+                filename = "a_2_l"
+            elif number in [137, 135, 131, 129, 172, 171, 170, 168, 166, 164, 162, 160, 158, 156]:
+                filename = "a_1_m"
+            elif 99 < number < 139:
+                filename = "a_1_r"
+            elif 172 < number < 200:
+                filename = "a_1_l"
+            elif 312 < number < 319 or 8 < number < 14:
+                filename = "a_3_r"
+            elif 318 < number < 325 or 13 < number < 19:
+                filename = "a_3_l"
+            elif 299 < number < 313:
+                filename = "a_3_r_r"
+            elif 224 < number < 337:
+                filename = "a_3_l_l"
+            elif 400 < number < 413:
+                filename = "a_4_r"
+            elif number in [416, 417, 418, 419, 420, 421, 422, 423, 424, 439]:
+                filename = "a_4_m"
+            elif number in [425, 426, 427, 428, 429, 430, 433, 434, 436, 438]:
+                filename = "a_4_l"
+            else:
+                filename = None
+        elif name == "б":
+            filename = f"b_{str(number)[0]}"
+        elif name == "в":
+            filename = f"v_{str(number)[0]}"
+        elif name == "г":
+            filename = f"g_{str(number)[0]}"
+        elif name == "д":
+            filename = f"d_{str(number)[0]}"
+        elif name == "и":
+            filename = f"i_{str(number)[0]}"
         else:
             filename = None
-    elif name == "б":
-        filename = f"b_{str(number)[0]}"
-    elif name == "в":
-        filename = f"v_{str(number)[0]}"
-    elif name == "г":
-        filename = f"g_{str(number)[0]}"
-    elif name == "д":
-        filename = f"d_{str(number)[0]}"
-    elif name == "и":
-        filename = f"i_{str(number)[0]}"
-    else:
-        filename = None
-    return make_header(name, number), filename
+        return make_header(name, number), filename
+    except TypeError:
+        return None, None
