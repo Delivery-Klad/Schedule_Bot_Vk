@@ -653,8 +653,7 @@ def message_handler(user_id, message):
         if pic is not None:
             try:
                 photo = upload.photo_messages(f"maps/{pic}.png", peer_id=admins_list[0])
-                photo = photo['doc']
-                attachment = f"photo{photo['owner_id']}_{photo['id']}"
+                attachment = f"photo{photo[0]['owner_id']}_{photo[0]['id']}"
 
                 api.messages.send(user_id=user_id, random_id=0, message=text, keyboard=keyboard,
                                   attachment=attachment)
