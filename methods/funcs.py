@@ -7,14 +7,6 @@ def isAdmin(user_id):
     return True if user_id in admins_list else False
 
 
-def correctTimeZone():
-    try:
-        curr_time = datetime.now() + timedelta(hours=time_difference)
-        return str(curr_time.strftime("%d.%m.%Y %H:%M:%S"))
-    except Exception as er:
-        error_log(er)
-
-
 def sort_days(days):
     temp, day = [], ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
     for i in days:

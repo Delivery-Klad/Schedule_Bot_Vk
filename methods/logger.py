@@ -3,8 +3,15 @@ import linecache
 from datetime import datetime, timedelta
 
 from methods.connect import db_connect
-from methods.funcs import correctTimeZone
 from methods.variables import time_difference, delimiter
+
+
+def correctTimeZone():
+    try:
+        curr_time = datetime.now() + timedelta(hours=time_difference)
+        return str(curr_time.strftime("%d.%m.%Y %H:%M:%S"))
+    except Exception as er:
+        error_log(er)
 
 
 def log(message, user_id):
