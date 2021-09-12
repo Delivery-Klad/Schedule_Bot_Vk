@@ -652,7 +652,7 @@ def message_handler(user_id, message):
             return
         if pic is not None:
             try:
-                photo = upload.photo_messages(f"maps/{pic}", peer_id=admins_list[0])
+                photo = upload.photo_messages(f"maps/{pic}.png", peer_id=admins_list[0])
                 photo = photo['doc']
                 attachment = f"photo{photo['owner_id']}_{photo['id']}"
 
