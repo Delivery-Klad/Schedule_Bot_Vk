@@ -327,12 +327,15 @@ def errors(user_id, message):
 
 def start(user_id):
     try:
-        text = f"{sm}Камнями кидаться СЮДА ()\n" \
+        text = f"{sm}Доступные команды:\n" \
+               f"/help - список доступных команд\n" \
                f"/group - установить/изменить группу\n" \
                f"/today - расписание на сегодня\n" \
                f"/tomorrow - расписание на завтра\n" \
                f"/week - расписание на неделю\n" \
-               f"/next_week - расписание на некст неделю"
+               f"/next_week - расписание на некст неделю\n" \
+               f"/weeknum (номер) - расписание по номеру недели\n" \
+               f"/which_week - узнать номер недели"
         send_message(user_id, text)
     except Exception as er:
         error_log(er)
@@ -578,6 +581,8 @@ def message_handler(user_id, message):
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
+    elif message == "help" or message == "помощь":
+        start(user_id)
     elif message == "начать" or "start" in message:
         start(user_id)
     elif message == "неделя" or "which_week" in message:
