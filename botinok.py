@@ -43,7 +43,7 @@ sm = "🤖"
 keyboard = None
 group_list = []
 admins_list = [492191518, 96641952]
-commands = ["сегодня", "завтра", "на неделю", "неделя", "на следующую неделю"]
+commands = ["сегодня", "завтра", "на неделю", "неделя", "на следующую неделю", "помощь"]
 parts = ["а", "б", "в", "г", "д", "и", "ивц"]
 day_dict = {"monday": "Понедельник",
             "tuesday": "Вторник",
@@ -494,7 +494,7 @@ def get_week_schedule(user_id, week, group):
         lessons = res.json()
     except Exception as er:
         if "line 1 column 1" in str(er):
-            text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API\nПроверяю кэшированное расписание"
+            text = "Не удается связаться с API\nПроверяю кэшированное расписание"
             send_message(user_id, f"{sm}{text}")
     if res.status_code == 503:
         try:
@@ -595,10 +595,11 @@ def message_handler(user_id, message):
                 if len(schedule) > 50:
                     send_message(user_id, schedule)
                 else:
-                    send_message(user_id, f"{sm}Пар не обнаружено")
+                    text = f"{sm}Сегодня воскресенье" if day == 6 else f"{sm}Пар не обнаружено"
+                    send_message(user_id, text)
             except Exception as er:
                 if "line 1 column 1" in str(er):
-                    text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
+                    text = "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "завтра" in message or "tomorrow" in message:
@@ -609,10 +610,11 @@ def message_handler(user_id, message):
                 if len(schedule) > 50:
                     send_message(user_id, schedule)
                 else:
-                    send_message(user_id, f"{sm}Пар не обнаружено")
+                    text = f"{sm}Сегодня воскресенье" if day == 6 else f"{sm}Пар не обнаружено"
+                    send_message(user_id, text)
             except Exception as er:
                 if "line 1 column 1" in str(er):
-                    text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
+                    text = "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "на следующую неделю" in message or "next_week" in message:
@@ -622,7 +624,7 @@ def message_handler(user_id, message):
                 get_week_schedule(user_id, "next_week", group)
             except Exception as er:
                 if "line 1 column 1" in str(er):
-                    text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
+                    text = "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "на неделю" in message or "week" in message:
@@ -632,7 +634,7 @@ def message_handler(user_id, message):
                 get_week_schedule(user_id, "week", group)
             except Exception as er:
                 if "line 1 column 1" in str(er):
-                    text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API"
+                    text = "Не удается связаться с API"
                     send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "errors" in message:
