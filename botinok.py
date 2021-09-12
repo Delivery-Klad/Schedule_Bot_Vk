@@ -4,67 +4,29 @@ import vk_api
 from vk_api import VkUpload
 from vk_api.longpoll import VkLongPoll, VkEventType
 import requests
-import psycopg2
 import json
-import linecache
 import difflib
-import sys
 import os
 from datetime import datetime, timedelta
+from methods.logger import error_log, log
+from methods import check_env, find_classroom, variables, funcs, sender
+from methods.connect import db_connect, create_tables
 
 
-def validator():
-    if os.environ.get('TOKEN') is None:
-        print("Не найдена переменная 'TOKEN'. Завершение работы...")
-        exit(0)
-    if os.environ.get('DB_host') is None:
-        print("Не найдена переменная 'DB_host'. Завершение работы...")
-        exit(0)
-    if os.environ.get('DB') is None:
-        print("Не найдена переменная 'DB'. Завершение работы...")
-        exit(0)
-    if os.environ.get('DB_user') is None:
-        print("Не найдена переменная 'DB_user'. Завершение работы...")
-        exit(0)
-    if os.environ.get('DB_port') is None:
-        print("Не найдена переменная 'DB_port'. Завершение работы...")
-        exit(0)
-    if os.environ.get('DB_pass') is None:
-        print("Не найдена переменная 'DB_pass'. Завершение работы...")
-        exit(0)
-
-
-validator()
+check_env.validator()
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
-api = vk_session.get_api()
+variables.api = vk_session.get_api()
 upload = VkUpload(vk_session)
 longpoll = VkLongPoll(vk_session)
 sm = "🤖"
-keyboard = None
 group_list = []
-admins_list = [492191518, 96641952]
-commands = ["сегодня", "завтра", "на неделю", "неделя", "на следующую неделю", "помощь"]
-parts = ["а", "б", "в", "г", "д", "и", "ивц"]
-day_dict = {"monday": "Понедельник",
-            "tuesday": "Вторник",
-            "wednesday": "Среда",
-            "thursday": "Четверг",
-            "friday": "Пятница",
-            "saturday": "Суббота",
-            "sunday": "Воскресенье"}
-lesson_dict = {"9:": "1", "10": "2", "12": "3", "14": "4", "16": "5", "18": "6", "19": "7", "20": "8"}
-time_dict = {"9:": "🕘", "10": "🕦", "12": "🕐", "14": "🕝", "16": "🕟", "18": "🕕", "19": "🕢", "20": "🕘"}
-delimiter = "------------------------------------------------"
-time_difference = 3
-response = ""
 print("Loading...")
 
 
 def find_match(word: str):
-    global commands
     best_match = 0.0
     result = ""
-    for element in commands:
+    for element in variables.commands:
         matcher = difflib.SequenceMatcher(None, word.lower(), element)
         if matcher.ratio() > best_match:
             best_match = matcher.ratio()
@@ -74,206 +36,8 @@ def find_match(word: str):
     return result
 
 
-def make_header(name: str, number: int):
-    if name == "ивц":
-        local_header = f"Корпус A, спускаться по главной лестнице"
-    else:
-        local_header = f"Корпус {name.upper()}"
-    if name == "в" or name == "б" or name == "д":
-        local_header += f" {str(number)[0]} этаж, направо от главной лестницы"
-    elif name == "г":
-        local_header += f" {str(number)[0]} этаж, налево от главной лестницы"
-    elif name == "и":
-        local_header += f" {str(number)[0]} этаж, налево от главного входа"
-    elif name == "а":
-        if number < 5 or 202 < number < 214:
-            local_header += " 2 этаж, направо от главной лестницы"
-        elif 4 < number < 9 or 213 < number < 236:
-            local_header += " 2 этаж, налево от главной лестницы"
-        elif number in [137, 135, 131, 129, 172, 171, 170, 168, 166, 164, 162, 160, 158, 156]:
-            local_header = f"Корпус A 1 этаж, спускаться по главной лестнице"
-        elif 99 < number < 139:
-            local_header = f"Корпус A 1 этаж, направо от главной лестницы"
-        elif 172 < number < 200:
-            local_header = f"Корпус A 1 этаж, налево от главной лестницы, спускаться за аудиторийей А-6"
-        elif 312 < number < 319 or 8 < number < 14:
-            local_header += " 3 этаж, направо от главной лестницы"
-        elif 318 < number < 325 or 13 < number < 19:
-            local_header += " 3 этаж, налево от главной лестницы"
-        elif 299 < number < 313:
-            local_header += " 3 этаж, направо от главной лестницы, подниматься за аудиторией А-1"
-        elif 224 < number < 337:
-            local_header += " 3 этаж, налево от главной лестницы, подниматься за аудиторией А-8"
-        elif 400 < number < 413:
-            local_header += " 4 этаж, направо от главной лестницы, подниматься за аудиторией А-1"
-        elif number in [416, 417, 418, 419, 420, 421, 422, 423, 424, 439]:
-            local_header += " 4 этаж, подниматься по главной лестнице"
-        elif number in [425, 426, 427, 428, 429, 430, 433, 434, 436, 438]:
-            local_header += " 4 этаж, налево от главной лестницы, подниматься за аудиторией А-8"
-    return local_header
-
-
-def find_classroom(classroom: str):
-    global parts
-    classroom = classroom.replace("-", " ")
-    temp = classroom.split(" ")
-    if len(temp) > 1:
-        if temp[0].lower() in parts:
-            name, number = temp[0].lower(), int(temp[1])
-        else:
-            return None, None
-    else:
-        if not temp[0][0].isnumeric() and temp[0][1:].isnumeric():
-            name, number = temp[0][0].lower(), int(temp[0][1:])
-        else:
-            return None, None
-    if name == "ивц":
-        filename = "ivc.png"
-    elif name == "а":
-        if number < 5 or 202 < number < 214:
-            filename = "a_2_r"
-        elif 4 < number < 9 or 213 < number < 236:
-            filename = "a_2_l"
-        elif number in [137, 135, 131, 129, 172, 171, 170, 168, 166, 164, 162, 160, 158, 156]:
-            filename = "a_1_m"
-        elif 99 < number < 139:
-            filename = "a_1_r"
-        elif 172 < number < 200:
-            filename = "a_1_l"
-        elif 312 < number < 319 or 8 < number < 14:
-            filename = "a_3_r"
-        elif 318 < number < 325 or 13 < number < 19:
-            filename = "a_3_l"
-        elif 299 < number < 313:
-            filename = "a_3_r_r"
-        elif 224 < number < 337:
-            filename = "a_3_l_l"
-        elif 400 < number < 413:
-            filename = "a_4_r"
-        elif number in [416, 417, 418, 419, 420, 421, 422, 423, 424, 439]:
-            filename = "a_4_m"
-        elif number in [425, 426, 427, 428, 429, 430, 433, 434, 436, 438]:
-            filename = "a_4_l"
-        else:
-            filename = None
-    elif name == "б":
-        filename = f"b_{str(number)[0]}"
-    elif name == "в":
-        filename = f"v_{str(number)[0]}"
-    elif name == "г":
-        filename = f"g_{str(number)[0]}"
-    elif name == "д":
-        filename = f"d_{str(number)[0]}"
-    elif name == "и":
-        filename = f"i_{str(number)[0]}"
-    else:
-        filename = None
-    return make_header(name, number), filename
-
-
-def button(text, color):
-    global keyboard
-    return {
-        "action": {
-            "type": "text",
-            "payload": "{\"button\": \"" + "1" + "\"}",
-            "label": text
-        },
-        "color": color
-    }
-
-
-def send_message(user_id, text):
-    global keyboard
-    api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard)
-
-
-def isAdmin(user_id):
-    return True if user_id in admins_list else False
-
-
-def db_connect():
-    try:
-        con = psycopg2.connect(
-            host="ec2-54-217-195-234.eu-west-1.compute.amazonaws.com",
-            database=str(os.environ.get('DB')),
-            user=str(os.environ.get('DB_user')),
-            port="5432",
-            password=str(os.environ.get('DB_pass'))
-        )
-        cur = con.cursor()
-        return con, cur
-    except Exception as er:
-        print(er)
-
-
-def create_tables():
-    try:
-        print("Создание таблиц...")
-        connect, cursor = db_connect()
-        if connect is None or cursor is None:
-            print("Я потерял БД, кто найдет оставьте на охране (не получилось подключиться к бд)")
-            return
-        cursor.execute("CREATE TABLE IF NOT EXISTS users(username TEXT, first_name TEXT,"
-                       "last_name TEXT, grp TEXT, ids BIGINT)")
-        cursor.execute("CREATE TABLE IF NOT EXISTS errors(reason TEXT)")
-        cursor.execute("SELECT COUNT(ids) FROM users")
-        print(f"Пользователей в базе {cursor.fetchone()[0]}")
-        connect.commit()
-        cursor.close()
-        connect.close()
-        print("Таблицы успешно созданы")
-    except Exception as er:
-        print(er)
-
-
-def error_log(er):
-    try:
-        if "string indices must be integers" in str(er):
-            return
-        exc_type, exc_obj, tb = sys.exc_info()
-        frame = tb.tb_frame
-        linenos = tb.tb_lineno
-        filename = frame.f_code.co_filename
-        linecache.checkcache(filename)
-        line = linecache.getline(filename, linenos, frame.f_globals)
-        connect, cursor = db_connect()
-        temp_date = correctTimeZone()
-        local_time = datetime.now() + timedelta(hours=time_difference)
-        if "line 1 column 1" in str(er):
-            global response
-            reason = f"{local_time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {str(response)}"
-        else:
-            reason = f"{local_time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {exc_obj}"
-        cursor.execute(f"INSERT INTO Errors VALUES($taG${reason}$taG$)")
-        connect.commit()
-        cursor.close()
-        connect.close()
-        print(f"{delimiter}\n{temp_date}\n{reason}\n")
-    except Exception as er:
-        print(f"{er} ошибка в обработчике ошибок. ЧТО?")
-
-
-def log(message, user_id):
-    try:
-        local_time = correctTimeZone()
-        # name = f"{message.from_user.first_name} {message.from_user.last_name}"
-        print(f"{delimiter}\n{local_time}\nСообщение от id = {user_id}\nТекст - {message}")
-    except Exception as er:
-        error_log(er)
-
-
-def correctTimeZone():
-    try:
-        curr_time = datetime.now() + timedelta(hours=time_difference)
-        return str(curr_time.strftime("%d.%m.%Y %H:%M:%S"))
-    except Exception as er:
-        error_log(er)
-
-
 def users(user_id):
-    global keyboard
-    if isAdmin(user_id):
+    if funcs.isAdmin(user_id):
         sql_request = "COPY (SELECT * FROM users) TO STDOUT WITH CSV HEADER"
         connect, cursor = db_connect()
         with open("temp/users.csv", "w") as output_file:
@@ -281,9 +45,7 @@ def users(user_id):
         doc = upload.document_message("temp/users.csv", title='users', peer_id=user_id)
         doc = doc['doc']
         attachment = f"doc{doc['owner_id']}_{doc['id']}"
-
-        api.messages.send(user_id=user_id, random_id=0, message="Пользователи", keyboard=keyboard,
-                          attachment=attachment)
+        sender.send_message(user_id, "Пользователи", attachment)
         os.remove("temp/users.csv")
         cursor.execute("DELETE FROM errors")
         connect.commit()
@@ -295,12 +57,11 @@ def users(user_id):
         cursor.close()
         connect.close()
     else:
-        send_message(user_id, f"{sm}Я вас не понял")
+        sender.send_message(user_id, f"{sm}Я вас не понял")
 
 
 def errors(user_id, message):
-    global keyboard
-    if isAdmin(user_id):
+    if funcs.isAdmin(user_id):
         sql_request = "COPY (SELECT * FROM errors) TO STDOUT WITH CSV HEADER"
         connect, cursor = db_connect()
         with open("temp/errors.csv", "w") as output_file:
@@ -308,9 +69,7 @@ def errors(user_id, message):
         doc = upload.document_message("temp/errors.csv", title='errors', peer_id=user_id)
         doc = doc['doc']
         attachment = f"doc{doc['owner_id']}_{doc['id']}"
-
-        api.messages.send(user_id=user_id, random_id=0, message="Лог ошибок", keyboard=keyboard,
-                          attachment=attachment)
+        sender.send_message(user_id, "Лог ошибок", attachment)
         os.remove("temp/errors.csv")
         cursor.execute("DELETE FROM errors")
         connect.commit()
@@ -322,7 +81,7 @@ def errors(user_id, message):
         cursor.close()
         connect.close()
     else:
-        send_message(user_id, f"{sm}Я вас не понял")
+        sender.send_message(user_id, f"{sm}Я вас не понял")
 
 
 def start(user_id):
@@ -336,11 +95,11 @@ def start(user_id):
                f"/next_week - расписание на некст неделю\n" \
                f"/weeknum (номер) - расписание по номеру недели\n" \
                f"/which_week - узнать номер недели"
-        send_message(user_id, text)
+        sender.send_message(user_id, text)
     except Exception as er:
         error_log(er)
         try:
-            send_message(user_id, f"{sm}А ой, ошиб04ка")
+            sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
         except Exception as err:
             error_log(err)
 
@@ -355,7 +114,7 @@ def cache():
     try:
         connect, cursor = db_connect()
         if connect is None or cursor is None:
-            send_message(admins_list[0], f"{sm}Я потерял БД, кто найдет оставьте на охране и повторите попытку позже")
+            sender.send_message(variables.admins_list[0], f"{sm}{variables.lost_db_msg}")
             return
         cursor.execute("SELECT DISTINCT grp FROM users")
         local_groups = cursor.fetchall()
@@ -370,54 +129,16 @@ def cache():
                 with open(f"cache/{i[0]}.json", "w") as file:
                     json.dump(lessons, file)
                 time.sleep(0.1)
-        send_message(admins_list[0], f"Caching success! \n{failed}/{len(local_groups)} failed")
+        sender.send_message(variables.admins_list[0], f"Caching success! \n{failed}/{len(local_groups)} failed")
         try:
-            doc = upload.document_message("cache/ИКБО-08-18.json", title='cache', peer_id=admins_list[0])
+            doc = upload.document_message("cache/ИКБО-08-18.json", title='cache', peer_id=variables.admins_list[0])
             doc = doc['doc']
             attachment = f"doc{doc['owner_id']}_{doc['id']}"
-
-            api.messages.send(user_id=admins_list[0], random_id=0, message="Cache", keyboard=keyboard,
-                              attachment=attachment)
+            sender.send_message(variables.admins_list[0], "Cache", attachment)
         except Exception as er:
             error_log(er)
     except Exception as er:
         error_log(er)
-
-
-def sort_days(days):
-    temp, day = [], ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    for i in days:
-        temp.append(day.index(i))
-    temp.sort()
-    days, index = [], 10
-    for i in temp:
-        days.append(day[i])
-    return days
-
-
-def number_of_lesson(lsn):
-    global lesson_dict
-    try:
-        return f"{lesson_dict[lsn[:2]]} пара"
-    except KeyError:
-        return "? пара"
-
-
-def get_teacher_icon(name):
-    try:
-        symbol = name.split(' ', 1)[0]
-        return "👩‍🏫" if symbol[len(symbol) - 1] == "а" else "👨‍🏫"
-    except IndexError:
-        return ""
-
-
-def get_time_icon(local_time):
-    global time_dict
-    try:
-        return time_dict[local_time[:2]]
-    except Exception as er:
-        error_log(er)
-        return "🕐"
 
 
 def set_group(user_id, group):
@@ -425,10 +146,10 @@ def set_group(user_id, group):
         connect, cursor = db_connect()
         valid_group = group.split("-")
         if len(valid_group) < 3:
-            send_message(user_id, f"{sm}Неверный формат группы")
+            sender.send_message(user_id, f"{sm}Неверный формат группы")
             return
         if not valid_group[1].isnumeric() and not valid_group[2].isnumeric():
-            send_message(user_id, f"{sm}Неверный формат группы")
+            sender.send_message(user_id, f"{sm}Неверный формат группы")
             return
         cursor.execute(f"SELECT count(ids) FROM users WHERE ids={user_id}")
         res = cursor.fetchall()[0][0]
@@ -443,7 +164,7 @@ def set_group(user_id, group):
         connect.commit()
         cursor.close()
         connect.close()
-        send_message(user_id, f"{sm}Я вас запомнил")
+        sender.send_message(user_id, f"{sm}Я вас запомнил")
         try:
             group_list.pop(group_list.index(user_id))
         except Exception as er:
@@ -451,33 +172,31 @@ def set_group(user_id, group):
                 error_log(er)
     except Exception as er:
         error_log(er)
-        send_message(user_id, f"{sm}А ой, ошиб04ка")
+        sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
 
 
 def get_week(user_id):
     try:
-        week = int((datetime.now() + timedelta(hours=time_difference)).strftime("%V"))
+        week = int((datetime.now() + timedelta(hours=variables.time_difference)).strftime("%V"))
         if week < 35:
             week -= 5
         else:
             week -= 34
-        send_message(user_id, f"{week} неделя")
+        sender.send_message(user_id, f"{week} неделя")
     except Exception as er:
         error_log(er)
 
 
 def get_schedule(day, group, title):
-    global response
     res = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/{group}/{day}")
-    response = str(res)
     lessons = res.json()
     group_schedule = title
     for i in lessons:
         j, o = i['lesson'], i['time']
         try:
-            group_schedule += f"{number_of_lesson(o['start'])} ({j['classRoom']}" \
-                              f"{get_time_icon(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
-                              f"({j['type']})\n{get_teacher_icon(j['teacher'])} {j['teacher']}\n\n"
+            group_schedule += f"{funcs.number_of_lesson(o['start'])} ({j['classRoom']}" \
+                              f"{funcs.get_time_icon(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
+                              f"({j['type']})\n{funcs.get_teacher_icon(j['teacher'])} {j['teacher']}\n\n"
         except TypeError:
             pass
         except Exception as er:
@@ -486,37 +205,34 @@ def get_schedule(day, group, title):
 
 
 def get_week_schedule(user_id, week, group):
-    global response
     res = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/{group}/{week}")
-    response = str(res)
-    day = datetime.today().weekday()
     try:
         lessons = res.json()
     except Exception as er:
         if "line 1 column 1" in str(er):
             text = "Не удается связаться с API\nПроверяю кэшированное расписание"
-            send_message(user_id, f"{sm}{text}")
+            sender.send_message(user_id, f"{sm}{text}")
     if res.status_code == 503:
         try:
             print(f"Поиск кэшированного расписания для группы '{group}'")
             with open(f"cache/{group}.json") as file:
                 lessons = json.load(file)
         except FileNotFoundError:
-            send_message(user_id, f"{sm}Кэшированое расписание для вашей группы не найдено")
+            sender.send_message(user_id, f"{sm}Кэшированое расписание для вашей группы не найдено")
             return
     rez, days = "", []
     try:
         for i in lessons:
             days.append(i)
-        days = sort_days(days)
+        days = funcs.sort_days(days)
         for i in days:
-            rez += f"{day_dict[i]}\n"
+            rez += f"{variables.day_dict[i]}\n"
             for k in lessons[i]:
                 j, o = k['lesson'], k['time']
                 try:
-                    rez += f"{number_of_lesson(o['start'])} ({j['classRoom']}" \
-                           f"{get_time_icon(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
-                           f"({j['type']})\n{get_teacher_icon(j['teacher'])} {j['teacher']}\n\n"
+                    rez += f"{funcs.number_of_lesson(o['start'])} ({j['classRoom']}" \
+                           f"{funcs.get_time_icon(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
+                           f"({j['type']})\n{funcs.get_teacher_icon(j['teacher'])} {j['teacher']}\n\n"
                 except TypeError:
                     pass
                 except Exception as er:
@@ -525,27 +241,27 @@ def get_week_schedule(user_id, week, group):
     except Exception as er:
         error_log(er)
         try:
-            send_message(user_id, f"{sm}А ой, ошиб04ка")
+            sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
         except Exception as err:
             error_log(err)
     if len(rez) > 50:
-        send_message(user_id, rez)
+        sender.send_message(user_id, rez)
     else:
-        send_message(user_id, f"{sm}Пар не обнаружено")
+        sender.send_message(user_id, f"{sm}Пар не обнаружено")
 
 
 def handler_group(message, user_id):
     log(message, user_id)
     try:
         if user_id not in group_list:
-            send_message(user_id, f"{sm}Напишите вашу группу")
+            sender.send_message(user_id, f"{sm}Напишите вашу группу")
             group_list.append(user_id)
         else:
-            send_message(user_id, f"{sm}Напишите вашу группу")
+            sender.send_message(user_id, f"{sm}Напишите вашу группу")
     except Exception as er:
         error_log(er)
         try:
-            send_message(user_id, f"{sm}А ой, ошиб04ка")
+            sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
         except Exception as err:
             error_log(err)
 
@@ -560,14 +276,14 @@ def get_group(user_id):
             connect.close()
             return group
         except TypeError:
-            send_message(user_id, f"{sm}У вас не указана группа\n/group, чтобы указать группу")
+            sender.send_message(user_id, f"{sm}У вас не указана группа\n/group, чтобы указать группу")
             return
         except Exception as er:
             error_log(er)
     except Exception as er:
         error_log(er)
         try:
-            send_message(user_id, f"{sm}Не удается получить вашу группу\n/group, чтобы указать группу")
+            sender.send_message(user_id, f"{sm}Не удается получить вашу группу\n/group, чтобы указать группу")
         except Exception as err:
             error_log(err)
         return
@@ -593,14 +309,14 @@ def message_handler(user_id, message):
             try:
                 schedule = get_schedule("today", group, "Пары сегодня:\n")
                 if len(schedule) > 50:
-                    send_message(user_id, schedule)
+                    sender.send_message(user_id, schedule)
                 else:
                     text = f"{sm}Сегодня воскресенье" if day == 6 else f"{sm}Пар не обнаружено"
-                    send_message(user_id, text)
+                    sender.send_message(user_id, text)
             except Exception as er:
                 if "line 1 column 1" in str(er):
                     text = "Не удается связаться с API"
-                    send_message(user_id, f"{sm}{text}")
+                    sender.send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "завтра" in message or "tomorrow" in message:
         group = get_group(user_id)
@@ -608,14 +324,14 @@ def message_handler(user_id, message):
             try:
                 schedule = get_schedule("tomorrow", group, "Пары завтра:\n")
                 if len(schedule) > 50:
-                    send_message(user_id, schedule)
+                    sender.send_message(user_id, schedule)
                 else:
                     text = f"{sm}Сегодня воскресенье" if day == 6 else f"{sm}Пар не обнаружено"
-                    send_message(user_id, text)
+                    sender.send_message(user_id, text)
             except Exception as er:
                 if "line 1 column 1" in str(er):
                     text = "Не удается связаться с API"
-                    send_message(user_id, f"{sm}{text}")
+                    sender.send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "на следующую неделю" in message or "next_week" in message:
         group = get_group(user_id)
@@ -625,7 +341,7 @@ def message_handler(user_id, message):
             except Exception as er:
                 if "line 1 column 1" in str(er):
                     text = "Не удается связаться с API"
-                    send_message(user_id, f"{sm}{text}")
+                    sender.send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "на неделю" in message or "week" in message:
         group = get_group(user_id)
@@ -635,7 +351,7 @@ def message_handler(user_id, message):
             except Exception as er:
                 if "line 1 column 1" in str(er):
                     text = "Не удается связаться с API"
-                    send_message(user_id, f"{sm}{text}")
+                    sender.send_message(user_id, f"{sm}{text}")
                 error_log(er)
     elif "errors" in message:
         errors(user_id, message)
@@ -652,40 +368,30 @@ def message_handler(user_id, message):
                     text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API\n/week - чтобы " \
                                                                   "посмотреть кэшированное расписание на " \
                                                                   "текущую неделю"
-                    send_message(user_id, f"{sm}{text}")
+                    sender.send_message(user_id, f"{sm}{text}")
                 else:
-                    send_message(user_id, f"{sm}Неверный ввод")
+                    sender.send_message(user_id, f"{sm}Неверный ввод")
                 error_log(er)
     elif len(message) < 7:
-        text, pic = find_classroom(message)
+        text, pic = find_classroom.find_classroom(message)
         if text is None and pic is None:
-            send_message(user_id, f"{sm}Я вас не понял")
+            sender.send_message(user_id, f"{sm}Я вас не понял")
             return
         if pic is not None:
             try:
-                photo = upload.photo_messages(f"maps/{pic}.png", peer_id=admins_list[0])
+                photo = upload.photo_messages(f"maps/{pic}.png", peer_id=variables.admins_list[0])
                 attachment = f"photo{photo[0]['owner_id']}_{photo[0]['id']}"
-
-                api.messages.send(user_id=user_id, random_id=0, message=text, keyboard=keyboard,
-                                  attachment=attachment)
+                sender.send_message(user_id, text, attachment)
                 return
             except FileNotFoundError:
-                send_message(user_id, f"{sm}Аудитория не найдена на схемах")
+                sender.send_message(user_id, f"{sm}Аудитория не найдена на схемах")
                 return
         else:
-            send_message(user_id, f"{sm}Аудитория не найдена на схемах")
+            sender.send_message(user_id, f"{sm}Аудитория не найдена на схемах")
             return
 
 
 create_tables()
-keyboard = {
-    "one_time": False,
-    "buttons": [
-        [button("Сегодня", "positive"), button("Завтра", "positive"), button("На неделю", "positive")]
-    ]
-}
-keyboard = json.dumps(keyboard, ensure_ascii=False).encode('utf-8')
-keyboard = str(keyboard.decode('utf-8'))
 cache()
 print("Бот запущен")
 for event in longpoll.listen():
