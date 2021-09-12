@@ -1,5 +1,10 @@
+import os
 import json
-from methods.variables import api
+import vk_api
+
+
+vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
+api = vk_session.get_api()
 
 
 def button(text, color):

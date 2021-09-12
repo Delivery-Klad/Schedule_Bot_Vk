@@ -15,7 +15,7 @@ from methods.connect import db_connect, create_tables
 
 check_env.validator()
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
-variables.api = vk_session.get_api()
+api = vk_session.get_api()
 upload = VkUpload(vk_session)
 longpoll = VkLongPoll(vk_session)
 sm = "🤖"
