@@ -22,13 +22,14 @@ def button(text, color):
 def send_photo(user_id, text: str, filename: str):
     photo = upload.photo_messages(filename, peer_id=user_id)
     attachment = f"photo{photo[0]['owner_id']}_{photo[0]['id']}"
+    send_message(user_id, text, attachment)
 
 
 def send_doc(user_id, text: str, filename: str, title=None):
     doc = upload.document_message(filename, title=title, peer_id=user_id)
     doc = doc['doc']
     attachment = f"doc{doc['owner_id']}_{doc['id']}"
-    send_message(user_id, text, filename)
+    send_message(user_id, text, attachment)
 
 
 def send_message(user_id, text: str, attachment=None):
