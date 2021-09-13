@@ -111,5 +111,6 @@ def find_classroom(classroom: str):
         else:
             filename = None
         return make_header(name, number), filename
-    except Exception:
+    except Exception as e:
+        print(e)
         return None, None
