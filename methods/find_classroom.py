@@ -1,4 +1,18 @@
 from methods import variables
+import difflib
+
+
+def find_match(word: str):
+    best_match = 0.0
+    result = ""
+    for element in variables.commands:
+        matcher = difflib.SequenceMatcher(None, word.lower(), element)
+        if matcher.ratio() > best_match:
+            best_match = matcher.ratio()
+            result = element
+    if best_match < 0.49:
+        return word
+    return result
 
 
 def make_header(name: str, number: int):
@@ -44,6 +58,7 @@ def find_classroom(classroom: str):
     try:
         classroom = classroom.replace("-", " ")
         temp = classroom.split(" ")
+        print(temp)
         if len(temp) > 1:
             if temp[0].lower() in variables.parts:
                 name, number = temp[0].lower(), int(temp[1])
@@ -96,5 +111,5 @@ def find_classroom(classroom: str):
         else:
             filename = None
         return make_header(name, number), filename
-    except TypeError:
+    except Exception:
         return None, None

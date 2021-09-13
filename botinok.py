@@ -4,7 +4,6 @@ import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 import requests
 import json
-import difflib
 import os
 from datetime import datetime, timedelta
 from methods.logger import error_log, log
@@ -19,19 +18,6 @@ longpoll = VkLongPoll(vk_session)
 sm = "🤖"
 group_list = []
 print("Loading...")
-
-
-def find_match(word: str):
-    best_match = 0.0
-    result = ""
-    for element in variables.commands:
-        matcher = difflib.SequenceMatcher(None, word.lower(), element)
-        if matcher.ratio() > best_match:
-            best_match = matcher.ratio()
-            result = element
-    if best_match < 0.49:
-        return word
-    return result
 
 
 def users(user_id):
@@ -282,7 +268,7 @@ def message_handler(user_id, message):
     if user_id in group_list:
         set_group(user_id, message.upper())
         return
-    message = find_match(message)
+    message = find_classroom.find_match(message)
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
