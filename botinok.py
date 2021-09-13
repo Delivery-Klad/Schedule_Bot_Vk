@@ -366,7 +366,7 @@ def message_handler(user_id, message):
 
 create_tables()
 cache()
-print("Бот запущен")
+print("Загрузка бота завершена")
 for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
         try:
