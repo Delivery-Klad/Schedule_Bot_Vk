@@ -57,9 +57,7 @@ def make_header(name: str, number: int):
 def find_classroom(classroom: str):
     try:
         classroom = classroom.replace("-", " ")
-        print(classroom)
         temp = classroom.split(" ")
-        print(temp)
         if len(temp) > 1:
             if temp[0].lower() in variables.parts:
                 name, number = temp[0].lower(), int(temp[1])

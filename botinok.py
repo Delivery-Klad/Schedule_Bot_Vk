@@ -347,7 +347,7 @@ def message_handler(user_id, message):
                 else:
                     sender.send_message(user_id, f"{sm}Неверный ввод")
                 error_log(er)
-    elif len(message) < 7:
+    elif len(message) < 8:
         text, pic = find_classroom.find_classroom(message)
         if text is None and pic is None:
             sender.send_message(user_id, f"{sm}Я вас не понял")
