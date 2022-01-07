@@ -107,11 +107,6 @@ def cache():
                 with open(f"cache/{i[0]}.json", "w") as file:
                     json.dump(lessons, file)
                 time.sleep(0.1)
-        sender.send_message(variables.admins_list[0], f"Caching success! \n{failed}/{len(local_groups)} failed")
-        try:
-            sender.send_doc(variables.admins_list[0], "Cache", "cache/ИКБО-08-18.json")
-        except Exception as er:
-            error_log(er)
     except Exception as er:
         error_log(er)
 
