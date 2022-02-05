@@ -6,7 +6,7 @@ import requests
 import json
 import os
 from threading import Thread
-from datetime import datetime, timedelta
+from datetime import datetime
 from methods.logger import error_log, log
 from methods import check_env, find_classroom, variables, funcs, sender
 from methods.connect import db_connect, create_tables

@@ -1,27 +1,9 @@
 from methods.logger import error_log
-from methods.variables import admins_list, lesson_dict, time_dict
+from methods.variables import admins_list, time_dict
 
 
 def isAdmin(user_id):
     return True if user_id in admins_list else False
-
-
-def sort_days(days):
-    temp, day = [], ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
-    for i in days:
-        temp.append(day.index(i))
-    temp.sort()
-    days, index = [], 10
-    for i in temp:
-        days.append(day[i])
-    return days
-
-
-def number_of_lesson(lsn):
-    try:
-        return f"{lesson_dict[lsn[:2]]} пара"
-    except KeyError:
-        return "? пара"
 
 
 def get_teacher_icon(name):
