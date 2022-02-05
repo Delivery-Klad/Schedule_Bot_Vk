@@ -1,16 +1,17 @@
 import time
-# import schedule
+import schedule as schedule_lib
 import vk_api
 from vk_api.longpoll import VkLongPoll, VkEventType
 import requests
 import json
 import os
+from threading import Thread
 from datetime import datetime, timedelta
 from methods.logger import error_log, log
 from methods import check_env, find_classroom, variables, funcs, sender
 from methods.connect import db_connect, create_tables
 
-
+api_host = "https://schedule-rtu.rtuitlab.dev/api/"
 check_env.validator()
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
 api = vk_session.get_api()
@@ -71,7 +72,6 @@ def start(user_id):
                f"/tomorrow - расписание на завтра\n" \
                f"/week - расписание на неделю\n" \
                f"/next_week - расписание на некст неделю\n" \
-               f"/weeknum (номер) - расписание по номеру недели\n" \
                f"/which_week - узнать номер недели"
         sender.send_message(user_id, text)
     except Exception as er:
@@ -84,6 +84,7 @@ def start(user_id):
 
 def cache():
     print("Caching schedule...")
+    week_num = requests.get(f"{api_host}current_week/").json()
     failed, local_groups = 0, 0
     try:
         os.mkdir("cache")
@@ -97,7 +98,7 @@ def cache():
         cursor.execute("SELECT DISTINCT grp FROM users")
         local_groups = cursor.fetchall()
         for i in local_groups:
-            res = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/{i[0]}/week")
+            res = requests.get(f"{api_host}lesson/?group={i[0]}&specific_week={week_num}")
             if res.status_code != 200:
                 failed += 1
                 print(f"Caching failed {res} Group '{i[0]}'")
@@ -147,42 +148,42 @@ def set_group(user_id, group):
 
 def get_week(user_id):
     try:
-        week = int((datetime.now() + timedelta(hours=variables.time_difference)).strftime("%V"))
-        if week < 35:
-            week -= 5
-        else:
-            week -= 34
+        week = requests.get(f"{api_host}current_week/").json()
         sender.send_message(user_id, f"{week} неделя")
     except Exception as er:
         error_log(er)
 
 
-def get_schedule(day, group, title):
-    res = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/{group}/{day}")
-    lessons = res.json()
-    group_schedule = title
-    for i in lessons:
-        j, o = i['lesson'], i['time']
-        try:
-            group_schedule += f"{funcs.number_of_lesson(o['start'])} ({j['classRoom']}" \
-                              f"{funcs.get_time_icon(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
-                              f"({j['type']})\n{funcs.get_teacher_icon(j['teacher'])} {j['teacher']}\n\n"
-        except TypeError:
-            pass
-        except Exception as er:
-            error_log(er)
-    return group_schedule
+def get_schedule(user_id, day, group, title):
+    day_num = datetime.today().weekday()
+    week = "week"
+    if day == "tomorrow":
+        day_num += 1
+        if day_num > 6:
+            day_num = 0
+            week = "next_week"
+    if day_num == 6:
+        return ""
+    temp = []
+    for i in get_week_schedule(user_id, week, group):
+        if i.split("\n")[0] == variables.day_dict[day_num + 1]:
+            temp = i.split("\n")
+            temp.pop(0)
+    return title + "\n".join(temp)
 
 
 def get_week_schedule(user_id, week, group):
-    res = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/{group}/{week}")
+    week_num = requests.get(f"{api_host}current_week/").json()
+    if week == "next_week":
+        week_num = 2 if week_num == 1 else 1
+    schedule = requests.get(f"{api_host}lesson/?group={group}&specific_week={week_num}")
     try:
-        lessons = res.json()
+        lessons = schedule.json()
     except Exception as er:
-        if "line 1 column 1" in str(er):
-            text = "Не удается связаться с API\nПроверяю кэшированное расписание"
-            sender.send_message(user_id, f"{sm}{text}")
-    if res.status_code == 503:
+        error_log(er)
+        text = "Не удается связаться с API\nПроверяю кэшированное расписание"
+        sender.send_message(user_id, f"{sm}{text}")
+    if schedule.status_code == 503:
         try:
             print(f"Поиск кэшированного расписания для группы '{group}'")
             with open(f"cache/{group}.json") as file:
@@ -190,34 +191,37 @@ def get_week_schedule(user_id, week, group):
         except FileNotFoundError:
             sender.send_message(user_id, f"{sm}Кэшированое расписание для вашей группы не найдено")
             return
-    rez, days = "", []
-    try:
-        for i in lessons:
-            days.append(i)
-        days = funcs.sort_days(days)
-        for i in days:
-            rez += f"{variables.day_dict[i]}\n"
-            for k in lessons[i]:
-                j, o = k['lesson'], k['time']
-                try:
-                    rez += f"{funcs.number_of_lesson(o['start'])} ({j['classRoom']}" \
-                           f"{funcs.get_time_icon(o['start'])}{o['start']} - {o['end']})\n{j['name']} " \
-                           f"({j['type']})\n{funcs.get_teacher_icon(j['teacher'])} {j['teacher']}\n\n"
-                except TypeError:
-                    pass
-                except Exception as er:
-                    error_log(er)
-            rez += "------------------------\n"
-    except Exception as er:
-        error_log(er)
+    messages, message, prev_day = [], "", -1
+    for i in lessons:
         try:
-            sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
-        except Exception as err:
-            error_log(err)
-    if len(rez) > 50:
-        sender.send_message(user_id, rez)
-    else:
-        sender.send_message(user_id, f"{sm}Пар не обнаружено")
+            if i['day_of_week'] != prev_day:
+                if message != "":
+                    messages.append(message)
+                message = ""
+                message += f"{variables.day_dict[i['day_of_week']]}\n"
+                prev_day = i['day_of_week']
+            try:
+                lesson_type = f" ({i['lesson_type']['short_name']})"
+            except TypeError:
+                lesson_type = ""
+            if i['teacher'] is None:
+                teacher = ""
+            else:
+                name = i['teacher'][0]['name']
+                teacher = f"{funcs.get_teacher_icon(name)} {name}"
+            if i['room'] is None:
+                room = ""
+            else:
+                room = i['room']['name']
+            message += f"{i['call']['call_num']} пара ({room}" \
+                       f"{funcs.get_time_icon(i['call']['begin_time'])}" \
+                       f"{i['call']['begin_time']} - {i['call']['end_time']})\n" \
+                       f"{i['discipline']['name']}{lesson_type}\n" \
+                       f"{teacher}\n\n"
+        except Exception as er:
+            error_log(er)
+    messages.append(message)
+    return messages
 
 
 def handler_group(message, user_id):
@@ -267,81 +271,64 @@ def message_handler(user_id, message):
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
-    elif message == "help" or message == "помощь":
+    elif message in ["/help", "/start", "help", "start", "помощь", "начать"]:
         start(user_id)
-    elif message == "начать" or "start" in message:
-        start(user_id)
-    elif message == "неделя" or "which_week" in message:
+    elif message in ["неделя", "какая неделя"] or "which_week" in message:
         get_week(user_id)
     elif "сегодня" in message or "today" in message:
         group = get_group(user_id)
         if group:
             try:
-                schedule = get_schedule("today", group, "Пары сегодня:\n")
+                schedule = get_schedule(user_id, "today", group, "Пары сегодня:\n")
                 if len(schedule) > 50:
                     sender.send_message(user_id, schedule)
                 else:
                     text = f"{sm}Сегодня воскресенье" if day == 6 else f"{sm}Пар не обнаружено"
                     sender.send_message(user_id, text)
             except Exception as er:
-                if "line 1 column 1" in str(er):
-                    text = "Не удается связаться с API"
-                    sender.send_message(user_id, f"{sm}{text}")
+                sender.send_message(user_id, f"{sm}Ooops, ошибо4ка, попробуйте позже")
                 error_log(er)
     elif "завтра" in message or "tomorrow" in message:
         group = get_group(user_id)
         if group:
             try:
-                schedule = get_schedule("tomorrow", group, "Пары завтра:\n")
+                schedule = get_schedule(user_id, "tomorrow", group, "Пары завтра:\n")
                 if len(schedule) > 50:
                     sender.send_message(user_id, schedule)
                 else:
-                    text = f"{sm}Сегодня воскресенье" if day == 6 else f"{sm}Пар не обнаружено"
+                    text = f"{sm}Завтра воскресенье" if day == 5 else f"{sm}Пар не обнаружено"
                     sender.send_message(user_id, text)
             except Exception as er:
-                if "line 1 column 1" in str(er):
-                    text = "Не удается связаться с API"
-                    sender.send_message(user_id, f"{sm}{text}")
+                sender.send_message(user_id, f"{sm}Ooops, ошибо4ка, попробуйте позже")
                 error_log(er)
     elif "на следующую неделю" in message or "next_week" in message:
         group = get_group(user_id)
         if group:
             try:
-                get_week_schedule(user_id, "next_week", group)
+                message = "------------------------\n".join(get_week_schedule(user_id, "next_week", group))
+                if len(message) > 50:
+                    sender.send_message(user_id, message)
+                else:
+                    sender.send_message(user_id, f"{sm}Пар не обнаружено")
             except Exception as er:
-                if "line 1 column 1" in str(er):
-                    text = "Не удается связаться с API"
-                    sender.send_message(user_id, f"{sm}{text}")
+                sender.send_message(user_id, f"{sm}Ooops, ошибо4ка, попробуйте позже")
                 error_log(er)
     elif "на неделю" in message or "week" in message:
         group = get_group(user_id)
         if group:
             try:
-                get_week_schedule(user_id, "week", group)
+                message = "------------------------\n".join(get_week_schedule(user_id, "week", group))
+                if len(message) > 50:
+                    sender.send_message(user_id, message)
+                else:
+                    sender.send_message(user_id, f"{sm}Пар не обнаружено")
             except Exception as er:
-                if "line 1 column 1" in str(er):
-                    text = "Не удается связаться с API"
-                    sender.send_message(user_id, f"{sm}{text}")
+                sender.send_message(user_id, f"{sm}Ooops, ошибо4ка, попробуйте позже")
                 error_log(er)
     elif "errors" in message:
         errors(user_id, message)
     elif "users" in message:
         users(user_id)
-    elif "weeknum" in message:
-        group = get_group(user_id)
-        if group:
-            try:
-                week = int(message.split()[1])
-                get_week_schedule(user_id, f"{week}/week_num", group)
-            except Exception as er:
-                if "line 1 column 1" in str(er):
-                    text = "Сегодня воскресенье" if day == 6 else "Не удается связаться с API\n/week - чтобы " \
-                                                                  "посмотреть кэшированное расписание на " \
-                                                                  "текущую неделю"
-                    sender.send_message(user_id, f"{sm}{text}")
-                else:
-                    sender.send_message(user_id, f"{sm}Неверный ввод")
-                error_log(er)
     elif len(message) < 8:
         text, pic = find_classroom.find_classroom(message)
         if text is None and pic is None:
@@ -359,8 +346,18 @@ def message_handler(user_id, message):
             return
 
 
+def create_thread():
+    while True:
+        schedule_lib.run_pending()
+
+
 create_tables()
-cache()
+start_cache = Thread(target=cache)
+start_cache.start()
+schedule_lib.every().day.at("01:00").do(cache)
+cache_thread = Thread(target=create_thread)
+print("Расписание кэширования создано!")
+cache_thread.start()
 print("Загрузка бота завершена")
 for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:

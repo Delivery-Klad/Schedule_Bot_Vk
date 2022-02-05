@@ -11,7 +11,7 @@
 ### Heroku variables:
 | Variable      | Value                   |
 |---------------|-------------------------|
-| TOKEN         | Telegram bot token      |
+| TOKEN         | VK bot token            |
 | DB            | Database name           |
 | DB_user       | Database user           |
 | DB_pass       | Database user password  |
