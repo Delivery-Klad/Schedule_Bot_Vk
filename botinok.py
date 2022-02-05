@@ -105,6 +105,8 @@ def cache():
             else:
                 print(f"Caching success {res} Group '{i[0]}'")
                 lessons = res.json()
+                if i[0] == "ИКБО-08-18":
+                    print(lessons)
                 with open(f"cache/{i[0]}.json", "w") as file:
                     json.dump(lessons, file)
                 time.sleep(0.1)
