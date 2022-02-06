@@ -7,7 +7,7 @@ import json
 import os
 from threading import Thread
 from datetime import datetime
-from methods.logger import error_log, log
+from methods.logger import error_log
 from methods import check_env, find_classroom, variables, funcs, sender
 from methods.connect import db_connect, create_tables
 
@@ -93,7 +93,6 @@ def cache():
     try:
         connect, cursor = db_connect()
         if connect is None or cursor is None:
-            sender.send_message(variables.admins_list[0], f"{sm}{variables.lost_db_msg}")
             return
         cursor.execute("SELECT DISTINCT grp FROM users")
         local_groups = cursor.fetchall()
@@ -110,6 +109,9 @@ def cache():
                 time.sleep(0.1)
     except Exception as er:
         error_log(er)
+    if failed == len(local_groups):
+        time.sleep(3600)
+        cache()
 
 
 def set_group(user_id, group):
@@ -225,7 +227,6 @@ def get_week_schedule(user_id, week, group):
 
 
 def handler_group(message, user_id):
-    log(message, user_id)
     try:
         if user_id not in group_list:
             sender.send_message(user_id, f"{sm}Напишите вашу группу")
@@ -364,7 +365,6 @@ for event in longpoll.listen():
         try:
             msg = event.text.lower()
             user = event.user_id
-            log(msg, user)
             message_handler(user, msg)
         except Exception as e:
             print(e)

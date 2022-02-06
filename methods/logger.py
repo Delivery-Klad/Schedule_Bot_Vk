@@ -3,29 +3,13 @@ import linecache
 from datetime import datetime, timedelta
 
 from methods.connect import db_connect
-from methods.variables import time_difference, delimiter, social_network
+from methods.variables import time_difference, delimiter
 
 
 def correctTimeZone():
     try:
         curr_time = datetime.now() + timedelta(hours=time_difference)
         return str(curr_time.strftime("%d.%m.%Y %H:%M:%S"))
-    except Exception as er:
-        error_log(er)
-
-
-def log(message, user_id):
-    try:
-        local_time = correctTimeZone()
-        if social_network == "vk":
-            print(f"{delimiter}\n{local_time}\nСообщение от id = {user_id}\nТекст - {message}")
-        else:
-            msg = message.text
-            if message.from_user.username is not None:
-                name = f"{message.from_user.username}"
-            else:
-                name = f"{message.from_user.first_name} {message.from_user.last_name}"
-            print(f"{delimiter}\n{local_time}\nСообщение от {name}, (id = {message.from_user.id})\nТекст - {msg}")
     except Exception as er:
         error_log(er)
 
@@ -41,10 +25,7 @@ def error_log(er):
         linecache.checkcache(filename)
         line = linecache.getline(filename, linenos, frame.f_globals)
         local_time = datetime.now() + timedelta(hours=time_difference)
-        if "line 1 column 1" in str(er):
-            reason = f"{local_time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {exc_obj}"
-        else:
-            reason = f"{local_time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {exc_obj}"
+        reason = f"{local_time} EXCEPTION IN ({filename}, LINE {linenos} '{line.strip()}'): {exc_obj}"
         connect, cursor = db_connect()
         temp_date = correctTimeZone()
         cursor.execute(f"INSERT INTO Errors VALUES($taG${reason}$taG$)")

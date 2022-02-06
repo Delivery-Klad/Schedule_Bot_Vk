@@ -1,5 +1,6 @@
-from methods import variables
 import difflib
+
+from methods import variables
 
 
 def find_match(word: str):
