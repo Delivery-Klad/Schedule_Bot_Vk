@@ -40,7 +40,7 @@ def start(user_id):
 
 def set_group(user_id, group):
     try:
-        if funcs.validate_group(group):
+        if not funcs.validate_group(group):
             sender.send_message(user_id, f"{sm}Неверный формат группы")
             return
         connect, cursor = db_connect()
