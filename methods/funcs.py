@@ -135,18 +135,23 @@ def get_schedule(user_id, day, group, title):
     if day_num == 6:
         return ""
     temp = []
-    for i in get_week_schedule(user_id, week, group):
+    for i in get_week_schedule(user_id, week, group, None):
         if i.split("\n")[0] == day_dict[day_num + 1]:
             temp = i.split("\n")
             temp.pop(0)
     return title + "\n".join(temp)
 
 
-def get_week_schedule(user_id, week, group):
+def get_week_schedule(user_id, week, group, teacher):
     week_num = requests.get(f"{api_host}current_week/").json()
     if week == "next_week":
         week_num = 2 if week_num == 1 else 1
-    schedule = requests.get(f"{api_host}lesson/?group={group}&specific_week={week_num}")
+    if group is not None:
+        schedule = requests.get(f"{api_host}lesson/?group={group}&specific_week={week_num}")
+    else:
+        schedule = requests.get(f"{api_host}lesson/?teacher={teacher}&specific_week={week_num}")
+    if schedule.status_code == 404:
+        return False
     try:
         lessons = schedule.json()
     except Exception as er:

@@ -27,8 +27,10 @@ def start(user_id):
                f"/today - расписание на сегодня\n" \
                f"/tomorrow - расписание на завтра\n" \
                f"/week - расписание на неделю\n" \
-               f"/next_week - расписание на некст неделю\n" \
-               f"/which_week - узнать номер недели"
+               f"/next_week - расписание на следующую неделю\n" \
+               f"/which_week - узнать номер недели\n" \
+               f"Для поиска аудитории напишите ее номер в чат\n" \
+               f"Для поиска преподавателя напишите его имя в формате Фамилия И.О."
         sender.send_message(user_id, text)
     except Exception as er:
         error_log(er)
@@ -128,7 +130,7 @@ def message_handler(user_id, message):
         group = funcs.get_group(user_id)
         if group:
             try:
-                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "next_week", group))
+                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "next_week", group, None))
                 if len(message) > 50:
                     sender.send_message(user_id, message)
                 else:
@@ -140,7 +142,7 @@ def message_handler(user_id, message):
         group = funcs.get_group(user_id)
         if group:
             try:
-                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "week", group))
+                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "week", group, None))
                 if len(message) > 50:
                     sender.send_message(user_id, message)
                 else:
@@ -167,6 +169,20 @@ def message_handler(user_id, message):
         else:
             sender.send_message(user_id, f"{sm}Аудитория не найдена на схемах")
             return
+    else:
+        teacher = message[0].upper()
+        teacher += message[1:]
+        temp = teacher.split()[1]
+        teacher = teacher.split()[0] + f" {temp.upper()}"
+        local_schedule = funcs.get_week_schedule(user_id, "week", None, teacher)
+        if not local_schedule:
+            sender.send_message(user_id, f"{sm}Пар не обнаружено")
+            return
+        message = "------------------------\n".join(local_schedule)
+        if len(message) > 50:
+            sender.send_message(user_id, message)
+        else:
+            sender.send_message(user_id, f"{sm}Пар не обнаружено")
 
 
 def create_thread():
@@ -175,12 +191,12 @@ def create_thread():
 
 
 create_tables()
-start_cache = Thread(target=funcs.cache)
+"""start_cache = Thread(target=funcs.cache)
 start_cache.start()
 schedule_lib.every().day.at("01:00").do(funcs.cache)
 cache_thread = Thread(target=create_thread)
 print("Расписание кэширования создано!")
-cache_thread.start()
+cache_thread.start()"""
 print("Загрузка бота завершена")
 for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
