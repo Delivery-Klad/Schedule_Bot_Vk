@@ -130,7 +130,8 @@ def message_handler(user_id, message):
         group = funcs.get_group(user_id)
         if group:
             try:
-                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "next_week", group, None))
+                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "next_week", group,
+                                                                                    None, None))
                 if len(message) > 50:
                     sender.send_message(user_id, message)
                 else:
@@ -142,7 +143,8 @@ def message_handler(user_id, message):
         group = funcs.get_group(user_id)
         if group:
             try:
-                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "week", group, None))
+                message = "------------------------\n".join(funcs.get_week_schedule(user_id, "week", group,
+                                                                                    None, None))
                 if len(message) > 50:
                     sender.send_message(user_id, message)
                 else:
@@ -154,6 +156,21 @@ def message_handler(user_id, message):
         funcs.get_errors(user_id)
     elif "users" in message:
         funcs.get_users(user_id)
+    elif "room" in message:
+        try:
+            number = message.split()[1]
+        except IndexError:
+            sender.send_message(user_id, f"{sm}Не указан номер аудитории")
+            return
+        local_schedule = funcs.get_week_schedule(user_id, "week", None, None, number)
+        if not local_schedule:
+            sender.send_message(user_id, f"{sm}Пар не обнаружено")
+            return
+        message = "------------------------\n".join(local_schedule)
+        if len(message) > 50:
+            sender.send_message(user_id, message)
+        else:
+            sender.send_message(user_id, f"{sm}Пар не обнаружено")
     elif len(message) < 8:
         text, pic = find_classroom.find_classroom(message)
         if text is None and pic is None:
@@ -177,7 +194,7 @@ def message_handler(user_id, message):
             teacher = teacher.split()[0] + f" {temp.upper()}"
         except IndexError:
             pass
-        local_schedule = funcs.get_week_schedule(user_id, "week", None, teacher)
+        local_schedule = funcs.get_week_schedule(user_id, "week", None, teacher, None)
         if not local_schedule:
             sender.send_message(user_id, f"{sm}Пар не обнаружено")
             return
