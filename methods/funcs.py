@@ -169,8 +169,12 @@ def get_week_schedule(user_id, week, group, teacher):
                 text = f"{sm}Кэшированое расписание для вашей группы не найдено"
             sender.send_message(user_id, text)
             return
-    messages, message, prev_day = [], "", -1
+    messages, message, prev_day, prev_lesson = [], "", -1, ""
     for i in lessons:
+        if i == prev_lesson:
+            continue
+        else:
+            prev_lesson = i
         try:
             if i['day_of_week'] != prev_day:
                 if message != "":
