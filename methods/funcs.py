@@ -171,10 +171,10 @@ def get_week_schedule(user_id, week, group, teacher):
             return
     messages, message, prev_day, prev_lesson = [], "", -1, ""
     for i in lessons:
-        if i == prev_lesson:
+        if {"room": i["room"], "type": i["lesson_type"], "time": i['call'], "day": i["day_of_week"]} == prev_lesson:
             continue
         else:
-            prev_lesson = i
+            prev_lesson = {"room": i["room"], "type": i["lesson_type"], "time": i['call'], "day": i["day_of_week"]}
         try:
             if i['day_of_week'] != prev_day:
                 if message != "":
