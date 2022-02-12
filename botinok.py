@@ -8,7 +8,7 @@ from vk_api.longpoll import VkLongPoll, VkEventType
 
 from methods.logger import error_log
 from methods import check_env, find_classroom, funcs, sender
-from methods.connect import db_connect, create_tables
+from methods.connect import create_tables
 
 check_env.validator()
 vk_session = vk_api.VkApi(token=str(os.environ.get('TOKEN')))
@@ -17,61 +17,6 @@ longpoll = VkLongPoll(vk_session)
 sm = "🤖"
 group_list = []
 print("Loading...")
-
-
-def start(user_id):
-    try:
-        text = f"{sm}Доступные команды:\n" \
-               f"/help - список доступных команд\n" \
-               f"/group - установить/изменить группу\n" \
-               f"/today - расписание на сегодня\n" \
-               f"/tomorrow - расписание на завтра\n" \
-               f"/week - расписание на неделю\n" \
-               f"/next_week - расписание на следующую неделю\n" \
-               f"/which_week - узнать номер недели\n" \
-               f"/room (+номер аудитории) - узнать расписание аудитории\n" \
-               f"Для поиска аудитории напишите ее номер в чат\n" \
-               f"Для поиска преподавателя напишите его имя в формате Фамилия И.О."
-        sender.send_message(user_id, text)
-    except Exception as er:
-        error_log(er)
-        try:
-            sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
-        except Exception as err:
-            error_log(err)
-
-
-def set_group(user_id, group):
-    try:
-        if not funcs.validate_group(group):
-            sender.send_message(user_id, f"{sm}Неверный формат группы")
-            return
-        connect, cursor = db_connect()
-        if connect is None or cursor is None:
-            sender.send_message(user_id, f"{sm}Я потерял БД, кто найдет оставьте на охране и повторите попытку позже")
-            return
-        cursor.execute(f"SELECT count(ids) FROM users WHERE ids={user_id}")
-        res = cursor.fetchall()[0][0]
-        user_info = vk_api.vk_api.VkApi.method(vk_session, 'users.get', {'user_ids': user})[0]
-        if res == 0:
-            cursor.execute(
-                f"INSERT INTO users VALUES('None', $taG${user_info['first_name']}$taG$,"
-                f"$taG${user_info['last_name']}$taG$, $taG${group}$taG$, {user_id})")
-        else:
-            cursor.execute(f"UPDATE users SET grp=$taG${group}$taG$, first_name=$taG${user_info['first_name']}$taG$,"
-                           f" last_name=$taG${user_info['last_name']}$taG$ WHERE ids={user_id}")
-        connect.commit()
-        cursor.close()
-        connect.close()
-        sender.send_message(user_id, f"{sm}Я вас запомнил")
-        try:
-            group_list.pop(group_list.index(user_id))
-        except Exception as er:
-            if "is not in list" not in str(er):
-                error_log(er)
-    except Exception as er:
-        error_log(er)
-        sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
 
 
 def handler_group(message, user_id):
@@ -91,14 +36,18 @@ def handler_group(message, user_id):
 
 def message_handler(user_id, message):
     if user_id in group_list:
-        set_group(user_id, message.upper())
+        user_info = vk_api.vk_api.VkApi.method(vk_session, 'users.get', {'user_ids': user})[0]
+        data = funcs.create_class('None', user_info['first_name'], user_info['last_name'],
+                                  message.upper(), user_id)
+        if funcs.set_group(data):
+            group_list.pop(group_list.index(data.ids))
         return
     message = find_classroom.find_match(message)
     day = datetime.today().weekday()
     if "group" in message:
         handler_group(message, user_id)
     elif message in ["/help", "/start", "help", "start", "помощь", "начать"]:
-        start(user_id)
+        funcs.start(user_id)
     elif message in ["неделя", "какая неделя"] or "which_week" in message:
         funcs.get_week(user_id)
     elif "сегодня" in message or "today" in message:

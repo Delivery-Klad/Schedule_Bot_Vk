@@ -1,4 +1,5 @@
 import os
+from time import sleep
 import json
 import vk_api
 
@@ -34,10 +35,15 @@ def send_doc(user_id, text: str, filename: str, title=None):
 
 def send_message(user_id, text: str, attachment=None):
     global keyboard
-    if attachment is None:
-        api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard)
-    else:
-        api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard, attachment=attachment)
+    try:
+        if attachment is None:
+            api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard)
+        else:
+            api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard, attachment=attachment)
+    except Exception as e:
+        if "timeout" in str(e).lower():
+            sleep(5)
+            api.messages.send(user_id=user_id, message=text, random_id=0, keyboard=keyboard)
 
 
 keyboard = {

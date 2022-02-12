@@ -12,6 +12,14 @@ from methods.variables import admins_list, time_dict, api_host, day_dict, social
 sm = "🤖"
 
 
+class UserData:
+    username: str
+    first_name: str
+    last_name: str
+    group: str
+    ids: int
+
+
 def isAdmin(user_id):
     return True if user_id in admins_list else False
 
@@ -51,6 +59,25 @@ def get_week(user_id):
         sender.send_message(user_id, text)
     except Exception as er:
         error_log(er)
+
+
+def start(user_id):
+    try:
+        text = f"{sm}Доступные команды:\n" \
+               f"/help - список доступных команд\n" \
+               f"/group - установить/изменить группу\n" \
+               f"/today - расписание на сегодня\n" \
+               f"/tomorrow - расписание на завтра\n" \
+               f"/week - расписание на неделю\n" \
+               f"/next_week - расписание на следующую неделю\n" \
+               f"/which_week - узнать номер недели\n" \
+               f"/room (+номер аудитории) - узнать расписание аудитории\n" \
+               f"Для поиска аудитории напишите ее номер в чат\n" \
+               f"Для поиска преподавателя напишите его имя в формате Фамилия И.О."
+        sender.send_message(user_id, text)
+    except Exception as er:
+        error_log(er)
+        sender.send_message(user_id, f"{sm}А ой, ошиб04ка")
 
 
 def get_users(user_id):
@@ -99,6 +126,16 @@ def get_errors(user_id):
         error_log(er)
 
 
+def create_class(username: str, first_name: str, last_name: str, group: str, ids: int):
+    data = UserData()
+    data.username = username
+    data.first_name = first_name
+    data.last_name = last_name
+    data.group = group
+    data.ids = ids
+    return data
+
+
 def get_group(user_id):
     try:
         connect, cursor = db_connect()
@@ -122,6 +159,34 @@ def get_group(user_id):
         except Exception as err:
             error_log(err)
         return
+
+
+def set_group(data: UserData):
+    try:
+        if not validate_group(data.group):
+            sender.send_message(data.ids, f"{sm}Неверный формат группы")
+            return
+        connect, cursor = db_connect()
+        if connect is None or cursor is None:
+            sender.send_message(data.ids, f"{sm}Я потерял БД, кто найдет оставьте на охране и повторите попытку позже")
+            return
+        cursor.execute(f"SELECT count(ids) FROM users WHERE ids={data.ids}")
+        res = cursor.fetchall()[0][0]
+        if res == 0:
+            cursor.execute(
+                f"INSERT INTO users VALUES('None', $taG${data.first_name}$taG$,"
+                f"$taG${data.last_name}$taG$, $taG${data.group}$taG$, {data.ids})")
+        else:
+            cursor.execute(f"UPDATE users SET grp=$taG${data.group}$taG$, first_name=$taG${data.first_name}$taG$,"
+                           f" last_name=$taG${data.last_name}$taG$ WHERE ids={data.ids}")
+        connect.commit()
+        cursor.close()
+        connect.close()
+        sender.send_message(data.ids, f"{sm}Я вас запомнил")
+        return True
+    except Exception as er:
+        error_log(er)
+        sender.send_message(data.ids, f"{sm}А ой, ошиб04ка")
 
 
 def get_schedule(user_id, day, group, title):
