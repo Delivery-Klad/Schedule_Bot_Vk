@@ -161,12 +161,12 @@ def create_thread():
 
 
 create_tables()
-start_cache = Thread(target=funcs.cache)
-start_cache.start()
-schedule_lib.every().day.at("01:00").do(funcs.cache)
-cache_thread = Thread(target=create_thread)
-print("Расписание кэширования создано!")
-cache_thread.start()
+# start_cache = Thread(target=funcs.cache)
+# start_cache.start()
+# schedule_lib.every().day.at("01:00").do(funcs.cache)
+# cache_thread = Thread(target=create_thread)
+# print("Расписание кэширования создано!")
+# cache_thread.start()
 print("Загрузка бота завершена")
 for event in longpoll.listen():
     if event.type == VkEventType.MESSAGE_NEW and event.to_me:
