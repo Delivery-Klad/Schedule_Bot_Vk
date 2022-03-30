@@ -2,7 +2,8 @@ import os
 import requests
 from json import dump, load
 from time import sleep
-from datetime import datetime
+from datetime import datetime, date, timedelta
+from icalendar import Calendar, Event
 
 from methods import sender
 from methods.logger import error_log
@@ -124,6 +125,65 @@ def get_errors(user_id):
             sender.send_message(user_id, f"{sm}Я вас не понял")
     except Exception as er:
         error_log(er)
+
+
+def add_element(element, first_day, calendar):
+    event = Event()
+    lesson_type = ""
+    if element["lesson_type"] is not None:
+        lesson_type = f"({element['lesson_type']['short_name']})"
+    event["summary"] = element["discipline"]["name"] + " " + lesson_type
+    description, room = "", ""
+    if len(element["teachers"]) > 0:
+        for teacher in element["teachers"]:
+            description += f"{teacher['name']} "
+    if element["room"] is not None:
+        room = f"{element['room']['name']}"
+    event["description"] = description
+    event["location"] = room
+    first_day = first_day.replace(hour=int(element["call"]["begin_time"].split(":")[0]),
+                                  minute=int(element["call"]["begin_time"].split(":")[1]))
+    event["dtstart;TZID=Europe/Moscow"] = first_day.strftime("%Y%m%dT%H%M%S")
+    first_day = first_day.replace(hour=int(element["call"]["end_time"].split(":")[0]),
+                                  minute=int(element["call"]["end_time"].split(":")[1]))
+    event["dtend;TZID=Europe/Moscow"] = first_day.strftime("%Y%m%dT%H%M%S")
+    calendar.add_component(event)
+
+
+def get_calendar(group, user_id):
+    calendar = Calendar()
+    current_date = datetime.now()
+    first_day = 1 if current_date.month > 6 else 11
+    month = 9 if current_date.month > 6 else 2
+
+    first_day = datetime.strptime(f"{first_day}/{month}/{current_date.year} 01:01", "%d/%m/%Y %H:%M")
+    first_day_num = date.weekday(first_day.date())
+    first_day -= timedelta(days=first_day_num)
+    week_num = 1
+    res = requests.get(f"https://schedule-rtu.rtuitlab.ru/api/groups?name={group}").json()
+    if res[0]["year"] == 4 and res[0]["degree"]["name"] == "Бакалавриат":
+        max_week = 8
+    else:
+        max_week = 16
+    for week in range(max_week):
+        local_day = 0
+        res = requests.get(f"https://schedule-rtu.rtuitlab.ru/api/lessons?group_name={group}"
+                           f"&specific_week={week_num}").json()
+        prev_day = res[0]["day_of_week"]
+        schedule = [[], [], [], [], [], []]
+        for i in res:
+            schedule[i['day_of_week'] - 1].append(i)
+        for day in schedule:
+            for lesson in day:
+                add_element(lesson, first_day, calendar)
+            first_day += timedelta(days=1)
+        first_day += timedelta(days=1)
+
+        week_num += 1
+    with open("temp/schedule.ics", "wb") as file:
+        file.write(calendar.to_ical())
+    sender.send_doc(user_id, "Расписание для календаря", "temp/schedule.ics")
+    os.remove("temp/schedule.ics")
 
 
 def create_class(username: str, first_name: str, last_name: str, group: str, ids: int):

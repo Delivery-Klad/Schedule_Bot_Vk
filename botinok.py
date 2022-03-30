@@ -102,6 +102,14 @@ def message_handler(user_id, message):
             except Exception as er:
                 sender.send_message(user_id, f"{sm}Ooops, ошибо4ка, попробуйте позже")
                 error_log(er)
+    elif "календарь" in message or "calendar" in message:
+        group = funcs.get_group(user_id)
+        if group:
+            try:
+                funcs.get_calendar(group, user_id)
+            except Exception as er:
+                sender.send_message(user_id, f"{sm}Ooops, ошибо4ка, попробуйте позже")
+                error_log(er)
     elif "errors" in message:
         funcs.get_errors(user_id)
     elif "users" in message:
