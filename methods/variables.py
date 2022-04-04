@@ -11,4 +11,4 @@ time_dict = {"9:": "🕘", "10": "🕦", "12": "🕐", "14": "🕝", "16": "🕟
 delimiter = "------------------------------------------------"
 time_difference = 3
 social_network = "vk"
-api_host = "https://schedule-rtu.rtuitlab.ru/api/schedule/"
+api_host = "https://schedule-rtu.rtuitlab.ru/api/"

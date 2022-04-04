@@ -52,7 +52,7 @@ def get_time_icon(local_time):
 
 def get_week(user_id):
     try:
-        week = requests.get(f"{api_host}current_week/").json()
+        week = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/current_week").json()
         if social_network == "tg":
             text = f"<b>{week}</b> неделя"
         else:
@@ -269,15 +269,15 @@ def get_schedule(user_id, day, group, title):
 
 
 def get_week_schedule(user_id, week, group, teacher, room):
-    week_num = requests.get(f"{api_host}current_week/").json()
+    week_num = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/current_week").json()
     if week == "next_week":
-        week_num = 2 if week_num == 1 else 1
+        week_num += 1
     if group is not None:
-        schedule = requests.get(f"{api_host}lessons/?group={group}&specific_week={week_num}")
+        schedule = requests.get(f"{api_host}lessons?group_name={group}&specific_week={week_num}")
     elif teacher is not None:
-        schedule = requests.get(f"{api_host}lessons/?teacher={teacher}&specific_week={week_num}")
+        schedule = requests.get(f"{api_host}lessons?teacher_name={teacher}&specific_week={week_num}")
     else:
-        schedule = requests.get(f"{api_host}lessons/?room={room}&specific_week={week_num}")
+        schedule = requests.get(f"{api_host}lessons?room_name={room}&specific_week={week_num}")
     if schedule.status_code == 404:
         return False
     try:
@@ -314,11 +314,13 @@ def get_week_schedule(user_id, week, group, teacher, room):
                 lesson_type = f" ({i['lesson_type']['short_name']})"
             except TypeError:
                 lesson_type = ""
-            if i['teacher'] is None:
+            if len(i['teachers']) == 0 or i['teachers'] is None:
                 teacher = ""
             else:
-                name = i['teacher'][0]['name']
+                name = i['teachers'][0]['name']
+                print(name)
                 teacher = f"{get_teacher_icon(name)} {name}"
+                print(teacher)
             if i['room'] is None:
                 room = ""
             else:
@@ -328,7 +330,7 @@ def get_week_schedule(user_id, week, group, teacher, room):
                            f"{get_time_icon(i['call']['begin_time'])}" \
                            f"{i['call']['begin_time']} - {i['call']['end_time']})</b>\n" \
                            f"{i['discipline']['name']}{lesson_type}\n" \
-                           f"{teacher}\n\n"
+                           f"{teacher}\n\n1"
             else:
                 message += f"{i['call']['call_num']} пара ({room}" \
                            f"{get_time_icon(i['call']['begin_time'])}" \
@@ -343,7 +345,7 @@ def get_week_schedule(user_id, week, group, teacher, room):
 
 def cache():
     print("Caching schedule...")
-    week_num = requests.get(f"{api_host}current_week/").json()
+    week_num = requests.get(f"https://schedule-rtu.rtuitlab.dev/api/schedule/current_week").json()
     failed, local_groups = 0, 0
     try:
         os.mkdir("cache")
@@ -356,7 +358,7 @@ def cache():
         cursor.execute("SELECT DISTINCT grp FROM users")
         local_groups = cursor.fetchall()
         for i in local_groups:
-            res = requests.get(f"{api_host}lessons/?group={i[0]}&specific_week={week_num}")
+            res = requests.get(f"{api_host}lessons?group={i[0]}&specific_week={week_num}")
             if res.status_code != 200:
                 failed += 1
                 print(f"Caching failed {res} Group '{i[0]}'")
