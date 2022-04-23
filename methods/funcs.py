@@ -330,7 +330,7 @@ def get_week_schedule(user_id, week, group, teacher, room):
                            f"{get_time_icon(i['call']['begin_time'])}" \
                            f"{i['call']['begin_time']} - {i['call']['end_time']})</b>\n" \
                            f"{i['discipline']['name']}{lesson_type}\n" \
-                           f"{teacher}\n\n1"
+                           f"{teacher}\n\n"
             else:
                 message += f"{i['call']['call_num']} пара ({room}" \
                            f"{get_time_icon(i['call']['begin_time'])}" \
