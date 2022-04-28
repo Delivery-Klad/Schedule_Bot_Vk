@@ -183,6 +183,7 @@ def get_calendar(group, user_id):
             first_day += timedelta(days=1)
         first_day += timedelta(days=1)
         week_num += 1
+
     with open("temp/schedule.ics", "wb") as file:
         file.write(calendar.to_ical())
     sender.send_doc(user_id, "Расписание для календаря", "temp/schedule.ics")
