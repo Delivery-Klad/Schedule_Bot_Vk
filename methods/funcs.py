@@ -169,8 +169,11 @@ def get_calendar(group, user_id):
     for week in range(max_week):
         local_day = 0
         res = requests.get(f"https://schedule-rtu.rtuitlab.ru/api/lessons?group_name={group}"
-                           f"&specific_week={week_num}").json()
-        prev_day = res[0]["day_of_week"]
+                               f"&specific_week={week_num}").json()
+        try:
+            prev_day = res[0]["day_of_week"]
+        except IndexError:
+            break
         schedule = [[], [], [], [], [], []]
         for i in res:
             schedule[i['day_of_week'] - 1].append(i)
@@ -179,7 +182,6 @@ def get_calendar(group, user_id):
                 add_element(lesson, first_day, calendar)
             first_day += timedelta(days=1)
         first_day += timedelta(days=1)
-
         week_num += 1
     with open("temp/schedule.ics", "wb") as file:
         file.write(calendar.to_ical())
