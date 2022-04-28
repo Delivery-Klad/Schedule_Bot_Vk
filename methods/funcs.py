@@ -169,7 +169,7 @@ def get_calendar(group, user_id):
     for week in range(max_week):
         local_day = 0
         res = requests.get(f"https://schedule-rtu.rtuitlab.ru/api/lessons?group_name={group}"
-                               f"&specific_week={week_num}").json()
+                           f"&specific_week={week_num}").json()
         try:
             prev_day = res[0]["day_of_week"]
         except IndexError:
